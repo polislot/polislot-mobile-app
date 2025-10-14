@@ -1,282 +1,452 @@
+// ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'mission_screen.dart';
-import 'parkir_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const DashboardTab();
-  }
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class DashboardTab extends StatefulWidget {
-  const DashboardTab({super.key});
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+
+  final List<String> slideTexts = [
+    "💪 Ayo klaim validasi harian untuk dapatkan poin!",
+    "🔥 Kumpulkan streak untuk jadi pemenang mingguan!",
+    "🎯 Selesaikan misi dan rebut posisi top leaderboard!",
+  ];
 
   @override
-  State<DashboardTab> createState() => _DashboardTabState();
-}
+  void initState() {
+    super.initState();
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _fadeAnimation =
+        CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut);
+    _fadeController.forward();
 
-class _DashboardTabState extends State<DashboardTab> {
-  bool _isPressed = false;
+    Future.doWhile(() async {
+      await Future.delayed(const Duration(seconds: 3));
+      if (!mounted) return false;
+      _currentPage = (_currentPage + 1) % slideTexts.length;
+      _pageController.animateToPage(
+        _currentPage,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOut,
+      );
+      return true;
+    });
+  }
 
-  void _showSuggestionDialog() {
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _showInfoPopup() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Text("Saran Validasi", style: TextStyle(fontWeight: FontWeight.bold)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text("📢 Info Board"),
         content: const Text(
-          "Pastikan lokasi dan kondisi parkir sesuai sebelum melakukan validasi. "
-          "Perhatikan keselamatan dan jangan menghalangi kendaraan lain.",
+          "Pada Hari Selasa tanggal 08 Oktober akan diberlakukan peraturan berupa wajib helm bagi pengguna motor!!",
+          textAlign: TextAlign.justify,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ParkingMapScreen()),
-              );
-            },
-            child: const Text("Lanjut Validasi"),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Tutup"),
           ),
         ],
       ),
     );
   }
 
-  Widget _infoBox(String text, IconData icon, Color color) {
-    return Expanded(
-      child: Container(
-        height: 70,
-        margin: const EdgeInsets.symmetric(horizontal: 6),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2)),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 26),
-            const SizedBox(width: 8),
-            Text(text, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 15)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _missionRow(String title, String reward, double progress, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.blue[800], size: 26),
-          const SizedBox(width: 10),
-          Expanded(
+  // ===================== UI =====================
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF3F6FB),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+          child: FadeTransition(
+            opacity: _fadeAnimation,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 6,
-                    color: const Color(0xFF0A3D91),
-                    backgroundColor: Colors.grey[300],
+                // ===== HEADER TITLE (match Reward style) =====
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 14),
+                  child: Center(
+                    child: Text(
+                      "Home",
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                ),
+
+                // ===== GREETING CARD =====
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF0A3D91), Color(0xFF1352C8)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x22000000),
+                        blurRadius: 8,
+                        offset: Offset(0, 3),
+                      )
+                    ],
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Hai, Andri Yani 👋",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 40,
+                        child: PageView.builder(
+                          controller: _pageController,
+                          itemCount: slideTexts.length,
+                          itemBuilder: (context, index) => Center(
+                            child: Text(
+                              slideTexts[index],
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 22),
+
+                // ===== INFO BOARD =====
+                _animatedCard(
+                  delay: 200,
+                  child: _customCard(
+                    padding: 20,
+                    child: GestureDetector(
+                      onTap: _showInfoPopup,
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.campaign_rounded,
+                              color: Colors.orange,
+                              size: 28,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              "Info Board: Aturan wajib helm berlaku mulai 08 Oktober 🚨",
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
+                          const Icon(Icons.arrow_forward_ios_rounded,
+                              size: 18, color: Colors.grey),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 18),
+
+                // ===== MISI HARIAN =====
+                _animatedCard(
+                  delay: 400,
+                  child: _customCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.flag_rounded,
+                                color: Colors.blue,
+                                size: 26,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            const Text(
+                              "Misi Harian",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        _missionTile("🕓 Validasi Pagi", 2 / 3, Colors.blue, "+30"),
+                        const SizedBox(height: 10),
+                        _missionTile("🔥 Streak Master", 6 / 7, Colors.green, "+70"),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const MissionScreen()),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1352C8),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            icon: const Icon(Icons.play_arrow_rounded,
+                                color: Colors.white),
+                            label: const Text(
+                              "Mulai Validasi",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 18),
+
+                // ===== LEADERBOARD =====
+                _animatedCard(
+                  delay: 600,
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const MissionScreen()),
+                      );
+                    },
+                    child: _customCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.leaderboard_rounded,
+                                  color: Colors.amber,
+                                  size: 26,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              const Text(
+                                "Peringkat Teratas",
+                                style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                              const Spacer(),
+                              const Icon(Icons.arrow_forward_ios_rounded,
+                                  size: 18, color: Colors.grey),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Column(
+                            children: List.generate(5, (index) {
+                              final rank = index + 1;
+                              return _leaderRow(
+                                rank.toString(),
+                                _leaderData[rank - 1]['name']!,
+                                _leaderData[rank - 1]['validasi']!,
+                                _leaderData[rank - 1]['color']!,
+                              );
+                            }),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  // ===================== Components =====================
+  Widget _animatedCard({required Widget child, required int delay}) {
+    return TweenAnimationBuilder(
+      tween: Tween(begin: 40.0, end: 0.0),
+      duration: Duration(milliseconds: 500 + delay),
+      curve: Curves.easeOut,
+      builder: (context, value, _) => Transform.translate(
+        offset: Offset(0, value),
+        child: Opacity(opacity: 1 - (value / 40), child: child),
+      ),
+    );
+  }
+
+  Widget _customCard({required Widget child, double padding = 16}) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(padding),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x22000000),
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  static Widget _missionTile(
+      String title, double value, Color color, String point) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(title,
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w500)),
+            ),
+            Text(point, style: const TextStyle(color: Colors.black54)),
+          ],
+        ),
+        const SizedBox(height: 6),
+        LinearProgressIndicator(
+          value: value,
+          backgroundColor: Colors.grey[300],
+          color: color,
+          minHeight: 6,
+          borderRadius: BorderRadius.circular(4),
+        ),
+      ],
+    );
+  }
+
+  static Widget _leaderRow(
+      String rank, String name, String validasi, Color color) {
+    IconData icon;
+    if (rank == "1") {
+      icon = Icons.emoji_events_rounded;
+    } else if (rank == "2") {
+      icon = Icons.military_tech_rounded;
+    } else if (rank == "3") {
+      icon = Icons.star_rounded;
+    } else {
+      icon = Icons.person_outline_rounded;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: color,
+            child: Icon(icon, color: Colors.white, size: 18),
+          ),
           const SizedBox(width: 10),
-          Text(reward, style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w600)),
+          Expanded(
+            child: Text(name,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w500, color: Colors.black87)),
+          ),
+          Row(
+            children: [
+              const Icon(Icons.verified_rounded,
+                  color: Colors.blue, size: 18),
+              const SizedBox(width: 4),
+              Text("$validasi Validasi",
+                  style: const TextStyle(
+                      fontSize: 13,
+                      color: Colors.black54,
+                      fontWeight: FontWeight.w500)),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _leaderboardCard(String name, String points, String rank) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      child: ListTile(
-        leading: CircleAvatar(
-          radius: 24,
-          backgroundColor: const Color(0xFF0A3D91),
-          child: const Icon(Icons.person, color: Colors.white),
-        ),
-        title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(points),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0A3D91),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text("#$rank", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        ),
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MissionScreen())),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final leaders = [
-      ["Ariel", "980 poin", "1"],
-      ["Bella", "870 poin", "2"],
-      ["Dimas", "830 poin", "3"],
-    ];
-
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF0A3D91), Color(0xFF1352C8)],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-      ),
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text("Hai, Andri Yani 👋",
-                  style: TextStyle(fontSize: 22, color: Colors.white, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 6),
-              const Text(
-                "Selamat datang di PoliSlot! Pantau slot parkir, misi, dan reward kamu di sini.",
-                style: TextStyle(color: Colors.white70),
-              ),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  _infoBox("127 Slot", Icons.local_parking, Colors.lightBlue),
-                  _infoBox("3 Area Parkir", Icons.map, Colors.deepPurple),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration:
-                    BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text("🔔 Info Board", style: TextStyle(fontWeight: FontWeight.bold)),
-                    SizedBox(height: 8),
-                    Text("Pada hari Selasa 08 Oktober akan diberlakukan aturan wajib helm bagi pengguna motor."),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration:
-                    BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text("🎯 Misi Harian Ini",
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    const SizedBox(height: 6),
-                    _missionRow("Validasi Lokasi", "+30 poin", 0.7, Icons.place),
-                    _missionRow("Streak Master", "+70 poin", 0.6, Icons.local_fire_department),
-                    const SizedBox(height: 10),
-                    AnimatedScale(
-                      scale: _isPressed ? 0.95 : 1.0,
-                      duration: const Duration(milliseconds: 120),
-                      child: GestureDetector(
-                        onTapDown: (_) => setState(() => _isPressed = true),
-                        onTapUp: (_) {
-                          setState(() => _isPressed = false);
-                          _showSuggestionDialog();
-                        },
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF0A3D91), Color(0xFF1352C8)],
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Center(
-                            child: Text("Validasi",
-                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text("🏆 Peringkat Teratas",
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-              const SizedBox(height: 10),
-              ...leaders.map((l) => _leaderboardCard(l[0], l[1], l[2])),
-              const SizedBox(height: 10),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class ParkingMapScreen extends StatefulWidget {
-  const ParkingMapScreen({super.key});
-
-  @override
-  State<ParkingMapScreen> createState() => _ParkingMapScreenState();
-}
-
-class _ParkingMapScreenState extends State<ParkingMapScreen> {
-  late GoogleMapController mapController;
-  final LatLng _polibatamCenter = const LatLng(1.1186, 104.0483);
-
-  void _onMapCreated(GoogleMapController controller) {
-    mapController = controller;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Peta Area Parkir',
-            style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.black87),
-        elevation: 1,
-      ),
-      body: GoogleMap(
-        onMapCreated: _onMapCreated,
-        initialCameraPosition: CameraPosition(target: _polibatamCenter, zoom: 17.0),
-        markers: {
-          Marker(
-            markerId: const MarkerId('parkirPolibatam'),
-            position: _polibatamCenter,
-            infoWindow: const InfoWindow(title: 'Area Parkir Polibatam'),
-          ),
-        },
-        myLocationEnabled: true,
-        myLocationButtonEnabled: true,
-        mapType: MapType.normal,
-      ),
-    );
-  }
+  static final List<Map<String, dynamic>> _leaderData = [
+    {"name": "Andri Yani Meuraxa", "validasi": "98", "color": Colors.amber},
+    {"name": "Alndea Resta Amaira", "validasi": "91", "color": Colors.grey},
+    {"name": "Ardila Putri", "validasi": "87", "color": Colors.brown},
+    {"name": "Rafi Putra", "validasi": "80", "color": Colors.blueAccent},
+    {"name": "Nanda Azizah", "validasi": "76", "color": Colors.purpleAccent},
+  ];
 }

@@ -37,7 +37,7 @@ class AppRoutes {
     mission: (context) => const MissionScreen(),
     reward: (context) => const RewardScreen(),
     profile: (context) => const ProfileScreen(),
-    parkir: (context) => const ParkirScreen(),
+    parkir: (context) => const ParkirFullScreen(),
     info: (context) => const InfoScreen(),
   };
 }

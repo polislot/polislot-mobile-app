@@ -1,419 +1,661 @@
+// lib/parkir_full_final.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:image_picker/image_picker.dart';
 
-class ParkirScreen extends StatefulWidget {
-  const ParkirScreen({super.key});
-
-  @override
-  State<ParkirScreen> createState() => _ParkirScreenState();
-}
-
-class _ParkirScreenState extends State<ParkirScreen> {
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.camera);
-    if (pickedFile != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => FullImageScreen(imagePath: pickedFile.path),
-        ),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF2F4FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        title:
-            const Text('Parkiran Kampus', style: TextStyle(color: Colors.black87)),
-        iconTheme: const IconThemeData(color: Colors.black87),
+void main() {
+  runApp(
+    MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        useMaterial3: true,
+        colorSchemeSeed: const Color(0xFF1976D2),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            const Text(
-              'Layanan Parkir',
-              style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0A3D91)),
-            ),
-            const SizedBox(height: 10),
-            _buildMapCard(context),
-            const SizedBox(height: 16),
-            _buildUploadCard(context),
-            const SizedBox(height: 16),
-            _buildDetailCard(context),
-            const SizedBox(height: 16),
-            _buildSlotCard(context), // 🔥 Tambahan baru
-            const SizedBox(height: 16),
-            _buildKomentarCard(context),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMapCard(BuildContext context) => GestureDetector(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const ParkingMapScreen()),
-        ),
-        child: _menuCard(
-          icon: Icons.map,
-          title: 'Peta Parkiran Kampus',
-          color: const Color(0xFF0A3D91),
-        ),
-      );
-
-  Widget _buildUploadCard(BuildContext context) => GestureDetector(
-        onTap: _pickImage,
-        child: _menuCard(
-          icon: Icons.upload_file,
-          title: 'Upload Bukti Slot Parkir',
-          color: Colors.green,
-        ),
-      );
-
-  Widget _buildDetailCard(BuildContext context) => GestureDetector(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const ParkingDetailScreen()),
-        ),
-        child: _menuCard(
-          icon: Icons.info_outline,
-          title: 'Detail Parkiran',
-          color: Colors.orange,
-        ),
-      );
-
-  Widget _buildSlotCard(BuildContext context) => GestureDetector(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const ParkingSlotDetailScreen()),
-        ),
-        child: _menuCard(
-          icon: Icons.directions_car,
-          title: 'Slot Parkir (A1 - A30)',
-          color: Colors.blue,
-        ),
-      );
-
-  Widget _buildKomentarCard(BuildContext context) => GestureDetector(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const KomentarCommunityScreen()),
-        ),
-        child: _menuCard(
-          icon: Icons.comment,
-          title: 'Komentar & Komunitas',
-          color: Colors.purple,
-        ),
-      );
-
-  Widget _menuCard({
-    required IconData icon,
-    required String title,
-    required Color color,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(15),
-          color: Colors.white,
-        ),
-        child: Row(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              padding: const EdgeInsets.all(10),
-              child: Icon(icon, color: color, size: 30),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(title,
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w500)),
-            ),
-            const Icon(Icons.arrow_forward_ios, size: 18, color: Colors.grey),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ✅ Halaman Detail Umum
-class ParkingDetailScreen extends StatelessWidget {
-  const ParkingDetailScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF2F4FA),
-      appBar: AppBar(
-        title: const Text('Detail Parkiran',
-            style: TextStyle(color: Colors.black87)),
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.black87),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _buildDetailItem(Icons.local_parking, 'Slot Tersedia', '35 dari 50'),
-          _buildDetailItem(Icons.location_on, 'Lokasi', 'Gedung A, B, dan C'),
-          _buildDetailItem(Icons.access_time, 'Jam Operasional', '06.00 - 22.00 WIB'),
-          _buildDetailItem(Icons.payment, 'Tarif', 'Rp 2.000 / jam'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailItem(IconData icon, String title, String subtitle) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: ListTile(
-        leading: Icon(icon, color: const Color(0xFF0A3D91)),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(subtitle),
-      ),
-    );
-  }
-}
-
-// ✅ Halaman Detail Slot Parkir
-class ParkingSlotDetailScreen extends StatefulWidget {
-  const ParkingSlotDetailScreen({super.key});
-
-  @override
-  State<ParkingSlotDetailScreen> createState() => _ParkingSlotDetailScreenState();
-}
-
-class _ParkingSlotDetailScreenState extends State<ParkingSlotDetailScreen> {
-  final List<Map<String, dynamic>> slots = List.generate(
-    30,
-    (i) => {
-      "slot": "A${i + 1}",
-      "available": i % 4 != 0, // tiap 4 slot, 1 penuh
-    },
+      home: const ParkirFullScreen(),
+    ),
   );
+}
+
+class ParkirFullScreen extends StatefulWidget {
+  const ParkirFullScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title:
-            const Text("Slot Parkir A1 - A30", style: TextStyle(color: Colors.black87)),
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.black87),
-      ),
-      backgroundColor: const Color(0xFFF2F4FA),
-      body: GridView.builder(
-        padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 1.2,
-        ),
-        itemCount: slots.length,
-        itemBuilder: (context, index) {
-          final slot = slots[index];
-          return GestureDetector(
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text(slot["available"]
-                    ? "Slot ${slot["slot"]} masih kosong ✅"
-                    : "Slot ${slot["slot"]} sedang terisi ❌"),
-                behavior: SnackBarBehavior.floating,
-              ));
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                color: slot["available"] ? Colors.green[100] : Colors.red[100],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                    color: slot["available"] ? Colors.green : Colors.red, width: 1.5),
-              ),
-              child: Center(
-                child: Text(
-                  slot["slot"],
-                  style: TextStyle(
-                    color: slot["available"] ? Colors.green[800] : Colors.red[800],
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
+  State<ParkirFullScreen> createState() => _ParkirFullScreenState();
+}
+
+class _ParkirFullScreenState extends State<ParkirFullScreen> {
+  final ImagePicker _picker = ImagePicker();
+
+  static const LatLng _polibatamLatLng = LatLng(1.1464, 104.0077);
+
+  final List<Map<String, dynamic>> _areas = [
+    {
+      'id': 'A',
+      'name': 'Parkiran Gedung Utama',
+      'services': ['Cuci Mobil', 'Tambal Ban', 'Servis'],
+      'slots': [
+        {'name': 'A1', 'status': 'Tersedia'},
+        {'name': 'A2', 'status': 'Terisi'},
+      ],
+      'posts': <Map<String, dynamic>>[],
+    },
+    {
+      'id': 'B',
+      'name': 'Parkiran Gedung Tecno',
+      'services': ['Cuci Mobil', 'Servis'],
+      'slots': [
+        {'name': 'B1', 'status': 'Tersedia'},
+        {'name': 'B2', 'status': 'Terisi'},
+      ],
+      'posts': <Map<String, dynamic>>[],
+    },
+    {
+      'id': 'C',
+      'name': 'Parkiran Gedung RTF',
+      'services': ['Tambal Ban'],
+      'slots': [
+        {'name': 'C1', 'status': 'Tersedia'},
+      ],
+      'posts': <Map<String, dynamic>>[],
+    },
+  ];
+
+  // --- FUNGSI ANIMASI TRANSISI FADE ---
+  Route _fadeRoute(Widget page) {
+    return PageRouteBuilder(
+      pageBuilder: (_, __, ___) => page,
+      transitionsBuilder: (_, animation, __, child) {
+        return FadeTransition(opacity: animation, child: child);
+      },
+      transitionDuration: const Duration(milliseconds: 400),
     );
   }
-}
 
-// ✅ Komentar Komunitas
-class KomentarCommunityScreen extends StatefulWidget {
-  const KomentarCommunityScreen({super.key});
-
-  @override
-  State<KomentarCommunityScreen> createState() =>
-      _KomentarCommunityScreenState();
-}
-
-class _KomentarCommunityScreenState extends State<KomentarCommunityScreen> {
-  final List<String> _komentarList = [];
-  final TextEditingController _controller = TextEditingController();
-
-  void _tambahKomentar() {
-    if (_controller.text.isNotEmpty) {
-      setState(() {
-        _komentarList.insert(0, _controller.text);
-        _controller.clear();
-      });
-    }
+  // --- MAP MODAL ---
+  void _openMapModal(String areaName) {
+    Navigator.of(context).push(_fadeRoute(
+      Scaffold(
+        appBar: AppBar(
+          title: Text('Lokasi - $areaName'),
+          backgroundColor: const Color(0xFF1976D2),
+          foregroundColor: Colors.white,
+        ),
+        body: GoogleMap(
+          mapType: MapType.normal,
+          initialCameraPosition: const CameraPosition(
+            target: _polibatamLatLng,
+            zoom: 16,
+          ),
+          markers: {
+            Marker(
+              markerId: const MarkerId('polibatam'),
+              position: _polibatamLatLng,
+              infoWindow: const InfoWindow(title: 'Politeknik Negeri Batam'),
+            ),
+          },
+        ),
+      ),
+    ));
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF2F4FA),
-      appBar: AppBar(
-        title: const Text('Komentar & Komunitas',
-            style: TextStyle(color: Colors.black87)),
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.black87),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: _komentarList.isEmpty
-                ? const Center(child: Text('Belum ada komentar.'))
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _komentarList.length,
-                    itemBuilder: (_, i) => Card(
-                      margin: const EdgeInsets.symmetric(vertical: 6),
-                      child: ListTile(
-                        leading: const CircleAvatar(child: Icon(Icons.person)),
-                        title: Text(_komentarList[i]),
-                      ),
-                    ),
-                  ),
+  // --- LAYANAN MODAL ---
+  void _showServicesModal(String areaName, List<String> services) {
+    Navigator.of(context).push(_fadeRoute(
+      Scaffold(
+        appBar: AppBar(
+          title: Text('Layanan - $areaName'),
+          backgroundColor: const Color(0xFF1976D2),
+          foregroundColor: Colors.white,
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Center(
+            child: Wrap(
+              spacing: 20,
+              runSpacing: 20,
+              alignment: WrapAlignment.center,
+              children: services.isEmpty
+                  ? [const Text('Tidak ada layanan tersedia')]
+                  : services.map((s) {
+                      IconData ic = Icons.miscellaneous_services;
+                      Color c = Colors.blue;
+                      if (s.contains('Cuci')) {
+                        ic = Icons.local_car_wash;
+                        c = Colors.lightBlue;
+                      } else if (s.contains('Tambal')) {
+                        ic = Icons.build;
+                        c = Colors.orange;
+                      } else if (s.contains('Servis')) {
+                        ic = Icons.settings;
+                        c = Colors.green;
+                      }
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircleAvatar(
+                              radius: 30,
+                              backgroundColor: c.withOpacity(0.12),
+                              child: Icon(ic, color: c, size: 26)),
+                          const SizedBox(height: 8),
+                          Text(s, textAlign: TextAlign.center),
+                        ],
+                      );
+                    }).toList(),
+            ),
           ),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 6,
-                    offset: const Offset(0, -2))
+        ),
+      ),
+    ));
+  }
+
+  // --- TAMBAH SLOT ---
+  void _openAddSlotModal(int areaIndex) {
+    String? selectedSlot;
+    String status = 'Tersedia';
+    File? selectedImage;
+    final TextEditingController descCtrl = TextEditingController();
+    final String areaId = _areas[areaIndex]['id'] as String;
+    final List<String> generatedSlots =
+        List.generate(6, (i) => '$areaId${i + 1}');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => FadeTransition(
+        opacity: CurvedAnimation(
+          parent: ModalRoute.of(ctx)!.animation!,
+          curve: Curves.easeInOut,
+        ),
+        child: AlertDialog(
+          title: const Text('Tambah Slot Parkir'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: selectedSlot,
+                  hint: const Text('Pilih Slot (mis: A3)'),
+                  onChanged: (v) => selectedSlot = v,
+                  items: generatedSlots
+                      .map((s) =>
+                          DropdownMenuItem(value: s, child: Text(s)))
+                      .toList(),
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: status,
+                  items: const [
+                    DropdownMenuItem(
+                        value: 'Tersedia', child: Text('Tersedia')),
+                    DropdownMenuItem(value: 'Terisi', child: Text('Terisi')),
+                  ],
+                  onChanged: (v) => status = v!,
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                    controller: descCtrl,
+                    decoration: const InputDecoration(
+                        labelText: 'Deskripsi (opsional)')),
+                const SizedBox(height: 8),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final x = await _picker.pickImage(
+                        source: ImageSource.camera, imageQuality: 80);
+                    if (x != null) {
+                      selectedImage = File(x.path);
+                    }
+                  },
+                  icon: const Icon(Icons.camera_alt),
+                  label: const Text('Ambil Foto'),
+                ),
               ],
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration(
-                      hintText: 'Tulis komentar...',
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(12))),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Batal')),
+            ElevatedButton(
+              onPressed: () {
+                if (selectedSlot != null) {
+                  setState(() {
+                    _areas[areaIndex]['slots'].add({
+                      'name': selectedSlot,
+                      'status': status,
+                      'photo': selectedImage,
+                      'desc': descCtrl.text,
+                    });
+                  });
+                  Navigator.pop(ctx);
+                }
+              },
+              child: const Text('Tambah'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- SLOT GRID ---
+  Widget _buildSlotGrid(Map<String, dynamic> area) {
+    final slots = area['slots'] as List<dynamic>;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final crossAxisCount = screenWidth < 600 ? 2 : 3;
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: slots.length,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: screenWidth < 350 ? 1.1 : 1.5,
+      ),
+      itemBuilder: (ctx, i) {
+        final slot = slots[i] as Map<String, dynamic>;
+        final bool isAvailable = (slot['status'] as String?) == 'Tersedia';
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: 1),
+          duration: Duration(milliseconds: 300 + (i * 50)),
+          builder: (_, value, child) => Opacity(
+            opacity: value,
+            child: Transform.translate(
+              offset: Offset(0, 20 * (1 - value)),
+              child: child,
+            ),
+          ),
+          child: GestureDetector(
+            onTap: () => _showSlotInfo(slot),
+            child: Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              color: isAvailable ? Colors.green.shade50 : Colors.red.shade50,
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      isAvailable
+                          ? Icons.local_parking
+                          : Icons.car_repair,
+                      color: isAvailable ? Colors.green : Colors.red,
+                      size: 30,
                     ),
-                  ),
+                    const SizedBox(height: 6),
+                    Text(slot['name'] ?? '',
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(slot['status'] ?? '',
+                        style: TextStyle(
+                            color: isAvailable
+                                ? Colors.green
+                                : Colors.red)),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: _tambahKomentar,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0A3D91),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // --- INFO SLOT ---
+  void _showSlotInfo(Map<String, dynamic> slot) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(12))),
+      builder: (ctx) => AnimatedOpacity(
+        duration: const Duration(milliseconds: 400),
+        opacity: 1,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Informasi Slot ${slot['name']}',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(height: 8),
+                  if (slot['photo'] != null)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(slot['photo'] as File,
+                          height: 160,
+                          width: double.infinity,
+                          fit: BoxFit.cover),
+                    ),
+                  const SizedBox(height: 8),
+                  Text('Status: ${slot['status'] ?? '-'}'),
+                  const SizedBox(height: 6),
+                  Text('Deskripsi: ${slot['desc'] ?? '-'}'),
+                  const SizedBox(height: 12),
+                  Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Tutup'))),
+                ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- AREA CARD ---
+  Widget _buildAreaCard(int index) {
+    final area = _areas[index];
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 400 + (index * 120)),
+      curve: Curves.easeOutCubic,
+      builder: (_, value, child) => Opacity(
+        opacity: value,
+        child: Transform.translate(
+          offset: Offset(0, 20 * (1 - value)),
+          child: child,
+        ),
+      ),
+      child: Card(
+        margin: const EdgeInsets.symmetric(vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 3,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              CircleAvatar(
+                  backgroundColor: const Color(0xFF1976D2),
+                  child: Text(area['id'],
+                      style: const TextStyle(color: Colors.white))),
+              const SizedBox(width: 8),
+              Expanded(
+                  child: Text(area['name'],
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold))),
+              IconButton(
+                  onPressed: () => _openMapModal(area['name']),
+                  icon: const Icon(Icons.map_outlined,
+                      color: Color(0xFF1976D2))),
+              IconButton(
+                  onPressed: () => _showServicesModal(
+                      area['name'], List<String>.from(area['services'])),
+                  icon: const Icon(Icons.room_service,
+                      color: Colors.deepPurple)),
+              IconButton(
+                  onPressed: () => _openCommunityScreen(index),
+                  icon: const Icon(Icons.people, color: Color(0xFF1976D2))),
+            ]),
+            const SizedBox(height: 10),
+            _buildSlotGrid(area),
+            const SizedBox(height: 10),
+            Center(
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1976D2),
+                    foregroundColor: Colors.white),
+                onPressed: () => _openAddSlotModal(index),
+                icon: const Icon(Icons.add),
+                label: const Text('Tambah Slot Parkir'),
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Area Parkir Kampus',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        automaticallyImplyLeading: false,
+      ),
+      body: ListView.builder(
+        padding: const EdgeInsets.all(12),
+        itemCount: _areas.length,
+        itemBuilder: (ctx, i) => _buildAreaCard(i),
+      ),
+    );
+  }
+
+  // --- KOMUNITAS ---
+  void _openCommunityScreen(int index) {
+    Navigator.push(
+      context,
+      _fadeRoute(CommunityScreen(
+        areaName: _areas[index]['name'],
+        posts: _areas[index]['posts'],
+      )),
+    ).then((posts) {
+      if (posts != null) {
+        setState(() => _areas[index]['posts'] = posts);
+      }
+    });
+  }
+}
+
+// --- KOMUNITAS SCREEN ---
+class CommunityScreen extends StatefulWidget {
+  final String areaName;
+  final List<Map<String, dynamic>> posts;
+  const CommunityScreen({super.key, required this.areaName, required this.posts});
+
+  @override
+  State<CommunityScreen> createState() => _CommunityScreenState();
+}
+
+class _CommunityScreenState extends State<CommunityScreen> {
+  final ImagePicker _picker = ImagePicker();
+  late List<Map<String, dynamic>> posts;
+
+  @override
+  void initState() {
+    super.initState();
+    posts = List<Map<String, dynamic>>.from(widget.posts);
+  }
+
+  Future<void> _createPostWithCamera() async {
+    final XFile? photo =
+        await _picker.pickImage(source: ImageSource.camera, imageQuality: 80);
+    if (photo == null) return;
+    final caption = TextEditingController();
+
+    final posted = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) {
+        return Padding(
+          padding:
+              EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Text('Buat Postingan',
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 12),
+                ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(File(photo.path),
+                        height: 180,
+                        width: double.infinity,
+                        fit: BoxFit.cover)),
+                const SizedBox(height: 12),
+                TextField(
+                    controller: caption,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Keterangan (opsional)')),
+                const SizedBox(height: 12),
+                Row(children: [
+                  Expanded(
+                      child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1976D2)),
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('Posting',
+                              style: TextStyle(color: Colors.white)))),
+                  const SizedBox(width: 12),
+                  OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Batal')),
+                ])
+              ]),
+            ),
+          ),
+        );
+      },
+    );
+
+    if (posted != true) return;
+
+    setState(() {
+      posts.insert(0, {
+        'user': 'Saya',
+        'text': caption.text.trim(),
+        'photo': File(photo.path),
+        'likes': 0,
+        'dislikes': 0,
+        'createdAt': DateTime.now(),
+      });
+    });
+  }
+
+  String _friendlyTime(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inSeconds < 60) return 'Baru saja';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
+    if (diff.inHours < 24) return '${diff.inHours}j';
+    return '${diff.inDays}h';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Komunitas - ${widget.areaName}'),
+        backgroundColor: const Color(0xFF1976D2),
+        foregroundColor: Colors.white,
+      ),
+      body: posts.isEmpty
+          ? Center(
+              child: Text('Belum ada postingan',
+                  style: TextStyle(color: Colors.grey.shade600)))
+          : ListView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: posts.length,
+              itemBuilder: (ctx, i) {
+                final post = posts[i];
+                return TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: 1),
+                  duration: Duration(milliseconds: 400 + (i * 80)),
+                  builder: (_, value, child) => Opacity(
+                    opacity: value,
+                    child: Transform.translate(
+                        offset: Offset(0, 20 * (1 - value)), child: child),
+                  ),
+                  child: Card(
+                    margin: const EdgeInsets.symmetric(vertical: 8),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
+                    elevation: 2,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(children: [
+                              const CircleAvatar(
+                                  radius: 18,
+                                  backgroundColor: Color(0xFF1976D2),
+                                  child: Icon(Icons.person,
+                                      color: Colors.white, size: 18)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                  child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                    Text(post['user'] ?? 'Anonim',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold)),
+                                    Text(_friendlyTime(
+                                        post['createdAt'] ?? DateTime.now()),
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade600)),
+                                  ])),
+                            ]),
+                            const SizedBox(height: 10),
+                            if (post['photo'] != null)
+                              ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.file(post['photo'] as File,
+                                      width: double.infinity,
+                                      fit: BoxFit.cover)),
+                            if ((post['text'] ?? '').isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Text(post['text']),
+                            ],
+                            const SizedBox(height: 8),
+                            Row(children: [
+                              IconButton(
+                                  onPressed: () => setState(
+                                      () => post['likes'] = post['likes'] + 1),
+                                  icon: const Icon(Icons.thumb_up_alt_outlined,
+                                      size: 20, color: Colors.green)),
+                              Text('${post['likes']}'),
+                              const SizedBox(width: 16),
+                              IconButton(
+                                  onPressed: () => setState(() =>
+                                      post['dislikes'] =
+                                          post['dislikes'] + 1),
+                                  icon: const Icon(Icons.thumb_down_alt_outlined,
+                                      size: 20, color: Colors.red)),
+                              Text('${post['dislikes']}'),
+                            ]),
+                          ]),
+                    ),
                   ),
-                  child: const Icon(Icons.send, color: Colors.white),
-                ),
-              ],
+                );
+              },
             ),
-          ),
-        ],
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _createPostWithCamera,
+        label: const Text('Posting'),
+        icon: const Icon(Icons.add_a_photo),
+        backgroundColor: const Color(0xFF1976D2),
+        foregroundColor: Colors.white,
       ),
     );
   }
-}
-
-// ✅ Full Image View
-class FullImageScreen extends StatelessWidget {
-  final String imagePath;
-  const FullImageScreen({super.key, required this.imagePath});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-          backgroundColor: Colors.white,
-          iconTheme: const IconThemeData(color: Colors.black87)),
-      body: Center(child: Image.file(File(imagePath))),
-    );
-  }
-}
-
-// ✅ Halaman Peta Google Maps
-class ParkingMapScreen extends StatefulWidget {
-  const ParkingMapScreen({super.key});
-
-  @override
-  State<ParkingMapScreen> createState() => _ParkingMapScreenState();
-}
-
-class _ParkingMapScreenState extends State<ParkingMapScreen> {
-  late GoogleMapController mapController;
-  final LatLng _kampusCenter = const LatLng(-6.9825, 110.4091);
-
-  void _onMapCreated(GoogleMapController controller) {
-    mapController = controller;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Peta Parkiran Kampus',
-            style: TextStyle(color: Colors.black87)),
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.black87),
-      ),
-      body: GoogleMap(
-        onMapCreated: _onMapCreated,
-        initialCameraPosition:
-            CameraPosition(target: _kampusCenter, zoom: 17),
-        markers: {
-          const Marker(
-            markerId: MarkerId('kampus_parkir'),
-            position: LatLng(-6.9825, 110.4091),
-            infoWindow: InfoWindow(title: 'Parkiran Kampus Utama'),
-          ),
-        },
-        myLocationEnabled: true,
-        zoomControlsEnabled: false,
-      ),
-    );
+  void dispose() {
+    Navigator.pop(context, posts);
+    super.dispose();
   }
 }

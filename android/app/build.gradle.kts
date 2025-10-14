@@ -40,5 +40,5 @@ android {
 }
 
 flutter {
-    extraProperties.set("flutter.enableImpeller", false)
+    source = "../.."
 }

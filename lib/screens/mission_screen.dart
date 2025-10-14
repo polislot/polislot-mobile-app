@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'parkir_screen.dart';
@@ -9,105 +10,270 @@ class MissionScreen extends StatefulWidget {
   State<MissionScreen> createState() => _MissionScreenState();
 }
 
-class _MissionScreenState extends State<MissionScreen> {
-  bool isDaily = true;
+class _MissionScreenState extends State<MissionScreen>
+    with SingleTickerProviderStateMixin {
+  bool isMissionTab = true;
+  late AnimationController _animController;
+  late Animation<double> _validasiAnim;
+  late Animation<double> _koinAnim;
 
-  void _showSuggestionDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          "Saran Validasi",
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: const Text(
-          "Pastikan lokasi dan waktu parkir sesuai sebelum melakukan validasi ya 🚗✨",
-          textAlign: TextAlign.justify,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Kembali"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ParkirScreen()),
-              );
-            },
-            child: const Text("Lanjut Validasi"),
-          ),
-        ],
-      ),
+  int totalValidasi = 24;
+  int totalKoin = 480;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+
+    _validasiAnim =
+        Tween<double>(begin: 0, end: totalValidasi.toDouble()).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOut),
+    );
+
+    _koinAnim = Tween<double>(begin: 0, end: totalKoin.toDouble()).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOut),
+    );
+
+    _animController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
+  void _navigateToParkir() {
+    Navigator.of(context).push(_createRoute());
+  }
+
+  Route _createRoute() {
+    return PageRouteBuilder(
+      pageBuilder: (context, animation, secondaryAnimation) =>
+          const ParkirFullScreen(),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final fade = CurvedAnimation(parent: animation, curve: Curves.easeInOut);
+        final slide = Tween<Offset>(
+          begin: const Offset(0, 0.2),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut));
+        return FadeTransition(
+          opacity: fade,
+          child: SlideTransition(position: slide, child: child),
+        );
+      },
+      transitionDuration: const Duration(milliseconds: 500),
     );
   }
+
+  Widget _fadeSlide(Widget child, int index, {double offsetY = 0.08}) {
+    final Animation<Offset> slide =
+        Tween<Offset>(begin: Offset(0, offsetY), end: Offset.zero).animate(
+      CurvedAnimation(
+        parent: _animController,
+        curve: Interval(min(1, index * 0.1), 1.0, curve: Curves.easeOut),
+      ),
+    );
+    final Animation<double> fade =
+        CurvedAnimation(parent: _animController, curve: Curves.easeIn);
+
+    return SlideTransition(
+      position: slide,
+      child: FadeTransition(opacity: fade, child: child),
+    );
+  }
+
+  final List<Map<String, dynamic>> _missions = [
+    {
+      "title": "Validasi Parkiran",
+      "points": "+30 poin",
+      "desc": "Selesaikan 3 kali validasi lokasi parkir hari ini untuk bonus tambahan.",
+      "progress": 0.66,
+      "icon": FontAwesomeIcons.squareCheck,
+      "color": Color(0xFF1352C8),
+    },
+    {
+      "title": "Streak Master",
+      "points": "+50 poin",
+      "desc": "Pertahankan streak validasi selama 7 hari berturut-turut untuk poin ekstra.",
+      "progress": 0.85,
+      "icon": FontAwesomeIcons.fire,
+      "color": Colors.orange,
+    },
+    {
+      "title": "Kontributor Hebat",
+      "points": "+300 poin",
+      "desc": "Lengkapi 10 validasi selama minggu ini untuk jadi kontributor terbaik.",
+      "progress": 0.98,
+      "icon": FontAwesomeIcons.award,
+      "color": Colors.amber,
+    },
+    {
+      "title": "Eksplorer Parkir",
+      "points": "+200 poin",
+      "desc": "Temukan dan validasi 5 area parkir baru selama minggu ini.",
+      "progress": 0.66,
+      "icon": FontAwesomeIcons.mapLocationDot,
+      "color": Colors.green,
+    },
+  ];
+
+  final List<Map<String, dynamic>> _leaderboardData = List.generate(
+    20,
+    (i) => {
+      "name": [
+        "Andri Yani Meuraxa",
+        "Alndea Resta Amaira",
+        "Ardila Putri",
+        "Rafi Putra",
+        "Nanda Azizah",
+        "Dimas Hidayat",
+        "Putri Maharani",
+        "Rizki Fadillah",
+        "Aulia Rahman",
+        "Febrianti Sari",
+        "Bayu Saputra",
+        "Tania Marlina",
+        "Yusuf Alamsyah",
+        "Citra Ayu",
+        "Wahyu Nugraha",
+        "Lina Oktaviani",
+        "Fajar Ramadhan",
+        "Siska Amelia",
+        "Gilang Permana",
+        "Rara Nurhaliza"
+      ][i],
+      "validasi": 98 - i * 2,
+    },
+  );
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFE9EEF6),
       appBar: AppBar(
-        elevation: 0,
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
-        title: const Text(
-          "Misi Pengguna",
-          style: TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
+        title: const Text(
+          "Misi & Leaderboard",
+          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
         ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(18),
+        physics: const BouncingScrollPhysics(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _statCard(isDaily: isDaily),
-            const SizedBox(height: 22),
-            _missionTabs(),
-            const SizedBox(height: 22),
-            isDaily ? _dailyMissions() : _weeklyMissions(),
+            _fadeSlide(_topStatsCard(), 0),
+            const SizedBox(height: 16),
+            _fadeSlide(_animatedTabs(), 1),
+            const SizedBox(height: 20),
+            _fadeSlide(isMissionTab ? _allMissions() : _leaderboard(), 2,
+                offsetY: 0.12),
           ],
         ),
       ),
     );
   }
 
-  // ==================== TAB ====================
-  Widget _missionTabs() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: const [
-          BoxShadow(color: Color(0x11000000), blurRadius: 6, offset: Offset(0, 3)),
-        ],
-      ),
-      padding: const EdgeInsets.all(10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _missionTab("Misi Harian", isDaily),
-          _missionTab("Misi Mingguan", !isDaily),
-        ],
-      ),
+  // === CARD DENGAN ANIMASI COUNT-UP ===
+  Widget _topStatsCard() {
+    return TweenAnimationBuilder(
+      tween: Tween<double>(begin: 0.8, end: 1.0),
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeOutBack,
+      builder: (context, scale, _) {
+        return Transform.scale(
+          scale: scale,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF0A3D91), Color(0xFF1352C8)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: const [
+                BoxShadow(color: Color(0x33000000), blurRadius: 10, offset: Offset(0, 4))
+              ],
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                AnimatedBuilder(
+                  animation: _validasiAnim,
+                  builder: (context, child) => _statBox(
+                    icon: Icons.verified_rounded,
+                    color: Colors.amber,
+                    title: "Total Validasi",
+                    value: _validasiAnim.value.toInt().toString(),
+                  ),
+                ),
+                AnimatedBuilder(
+                  animation: _koinAnim,
+                  builder: (context, child) => _statBox(
+                    icon: Icons.monetization_on_rounded,
+                    color: Colors.greenAccent,
+                    title: "Total Koin",
+                    value: _koinAnim.value.toInt().toString(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _missionTab(String title, bool active) {
+  Widget _statBox(
+      {required IconData icon,
+      required Color color,
+      required String title,
+      required String value}) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 32),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+            color: Colors.white,
+          ),
+        ),
+        Text(
+          title,
+          style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13),
+        ),
+      ],
+    );
+  }
+
+  // === ANIMATED TAB BUTTONS ===
+  Widget _animatedTabs() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        _animatedTab("Misi", Icons.flag_rounded, isMissionTab),
+        _animatedTab("Leaderboard", Icons.emoji_events_rounded, !isMissionTab),
+      ],
+    );
+  }
+
+  Widget _animatedTab(String title, IconData icon, bool active) {
     return GestureDetector(
-      onTap: () => setState(() => isDaily = title == "Misi Harian"),
+      onTap: () => setState(() => isMissionTab = title == "Misi"),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 12),
         decoration: BoxDecoration(
           gradient: active
               ? const LinearGradient(
@@ -116,163 +282,170 @@ class _MissionScreenState extends State<MissionScreen> {
                   end: Alignment.bottomRight,
                 )
               : null,
-          color: active ? null : const Color(0xFFF0F0F0),
-          borderRadius: BorderRadius.circular(12),
+          color: active ? null : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            if (active)
+              const BoxShadow(
+                color: Color(0x33000000),
+                blurRadius: 8,
+                offset: Offset(0, 3),
+              ),
+          ],
         ),
-        child: Text(
-          title,
-          style: TextStyle(
-            color: active ? Colors.white : Colors.black54,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ==================== KARTU STATISTIK ====================
-  Widget _statCard({required bool isDaily}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0A3D91), Color(0xFF1352C8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: const [
-          BoxShadow(color: Color(0x330A3D91), blurRadius: 6, offset: Offset(0, 3)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            isDaily ? "Statistik Hari Ini!" : "Statistik Mingguan!",
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
+        child: Row(
+          children: [
+            Icon(icon,
+                color: active ? Colors.white : const Color(0xFF1352C8),
+                size: 20),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: active ? Colors.white : Colors.black54,
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text("⭐ 2400 Poin", style: TextStyle(color: Colors.white, fontSize: 15)),
-              Text("Total Validasi: 70", style: TextStyle(color: Colors.white, fontSize: 15)),
-            ],
-          ),
-          const SizedBox(height: 4),
-          const Text("🔥 Streak: 7 Hari", style: TextStyle(color: Colors.white, fontSize: 15)),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  // ==================== MISI HARIAN ====================
-  Widget _dailyMissions() {
+  // === Misi ===
+  Widget _allMissions() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Misi Harian", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        const Text("Daftar Misi Kamu",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         const SizedBox(height: 14),
-
-        // Tombol validasi di sini 🔥
-        GestureDetector(
-          onTap: _showSuggestionDialog,
-          child: _missionRow("Validasi Parkiran", "+30 poin", 0.66, FontAwesomeIcons.squareCheck),
-        ),
-        _missionRow("Streak Master", "+50 poin", 0.85, FontAwesomeIcons.fire),
-
-        const SizedBox(height: 22),
-        _tipsCard(),
+        for (int i = 0; i < _missions.length; i++)
+          _fadeSlide(_missionCard(i, _missions[i]), i + 1),
       ],
     );
   }
 
-  // ==================== MISI MINGGUAN ====================
-  Widget _weeklyMissions() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text("Misi Mingguan", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        const SizedBox(height: 14),
-        _missionRow("Kontributor Hebat", "+300 poin", 0.98, FontAwesomeIcons.award),
-        _missionRow("Eksplorer Parkir", "+200 poin", 0.66, FontAwesomeIcons.mapLocationDot),
-        const SizedBox(height: 22),
-        _tipsCard(),
-      ],
-    );
-  }
-
-  // ==================== ROW MISI ====================
-  Widget _missionRow(String title, String point, double progress, IconData icon) {
+  Widget _missionCard(int index, Map<String, dynamic> m) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: const [
-          BoxShadow(color: Color(0x11000000), blurRadius: 5, offset: Offset(0, 2)),
-        ],
+        boxShadow: const [BoxShadow(color: Color(0x11000000), blurRadius: 5)],
       ),
-      child: Row(
-        children: [
-          Icon(icon, color: const Color(0xFF1352C8), size: 26),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(m['icon'] as IconData, color: m['color'] as Color, size: 26),
           const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: const Color(0xFFE0E0E0),
-                    color: const Color(0xFF1352C8),
-                    minHeight: 6,
-                  ),
-                ),
-              ],
-            ),
+            child: Text(m['title'] as String,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
           ),
-          const SizedBox(width: 10),
-          Text(point,
-              style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w600)),
-        ],
-      ),
+          Text(m['points'] as String,
+              style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w600))
+        ]),
+        const SizedBox(height: 8),
+        Text(m['desc'] as String,
+            style: const TextStyle(color: Colors.black54, fontSize: 13)),
+        const SizedBox(height: 10),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: LinearProgressIndicator(
+            value: m['progress'] as double,
+            backgroundColor: const Color(0xFFE0E0E0),
+            color: m['color'] as Color,
+            minHeight: 6,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ElevatedButton.icon(
+          onPressed: _navigateToParkir,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF1352C8),
+            minimumSize: const Size(double.infinity, 42),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          icon: const Icon(Icons.play_arrow_rounded, color: Colors.white),
+          label:
+              const Text("Mulai Validasi", style: TextStyle(color: Colors.white)),
+        ),
+      ]),
     );
   }
 
-  // ==================== KARTU TIPS ====================
-  Widget _tipsCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFDCE6FA),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          Icon(FontAwesomeIcons.lightbulb, color: Color(0xFF1352C8), size: 20),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              "✅ Validasi setiap hari untuk mempertahankan streak\n"
-              "🎯 Fokus pada akurasi agar dapat poin bonus\n"
-              "🗺️ Kunjungi lokasi berbeda untuk misi eksplorasi",
-              style: TextStyle(color: Colors.black87, fontSize: 13, height: 1.4),
+  // === Leaderboard ===
+  Widget _leaderboard() {
+    return TweenAnimationBuilder(
+      tween: Tween<double>(begin: 0.9, end: 1.0),
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOutBack,
+      builder: (context, scale, _) => Transform.scale(
+        scale: scale,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Peringkat Teratas",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: const [
+                  BoxShadow(color: Color(0x11000000), blurRadius: 6)
+                ],
+              ),
+              child: ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _leaderboardData.length,
+                itemBuilder: (context, index) {
+                  final user = _leaderboardData[index];
+                  final rank = index + 1;
+                  Color badgeColor;
+                  IconData icon;
+
+                  if (rank == 1) {
+                    badgeColor = Colors.amber;
+                    icon = Icons.emoji_events;
+                  } else if (rank == 2) {
+                    badgeColor = Colors.grey;
+                    icon = Icons.military_tech;
+                  } else if (rank == 3) {
+                    badgeColor = Colors.brown;
+                    icon = Icons.star;
+                  } else {
+                    badgeColor = Colors.primaries[index % Colors.primaries.length];
+                    icon = Icons.person;
+                  }
+
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: badgeColor.withOpacity(0.15),
+                      child: Icon(icon, color: badgeColor),
+                    ),
+                    title: Text(user['name'],
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 15)),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.verified, color: badgeColor, size: 18),
+                        const SizedBox(width: 4),
+                        Text("${user['validasi']} Validasi",
+                            style: const TextStyle(color: Colors.black87)),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:confetti/confetti.dart';
@@ -12,11 +14,65 @@ class RewardScreen extends StatefulWidget {
 class _RewardScreenState extends State<RewardScreen> {
   late ConfettiController _confettiController;
   bool isTokoSelected = true;
+  final Color primaryBlue = const Color(0xFF1352C8);
+  int totalKoin = 480;
+
+  final List<Map<String, dynamic>> _rewards = [
+    {
+      "icon": FontAwesomeIcons.mugHot,
+      "title": "Tumbler Eksklusif",
+      "subtitle": "Temani aktivitasmu — tahan panas & keren dibawa ke mana saja.",
+      "poin": 500,
+      "color": Colors.deepOrange
+    },
+    {
+      "icon": FontAwesomeIcons.shirt,
+      "title": "Hoodie Parkir",
+      "subtitle": "Hoodie nyaman dengan logo PoliSlot — tampil keren tiap validasi.",
+      "poin": 800,
+      "color": Colors.purple
+    },
+    {
+      "icon": FontAwesomeIcons.ticket,
+      "title": "Voucher Belanja",
+      "subtitle": "Voucher spesial untuk merchant kampus. Belanja lebih hemat!",
+      "poin": 400,
+      "color": Colors.green
+    },
+    {
+      "icon": FontAwesomeIcons.gift,
+      "title": "Kotak Misteri",
+      "subtitle": "Isi acak — bisa voucher, merchandise, atau kejutan seru!",
+      "poin": 600,
+      "color": Colors.teal
+    },
+  ];
+
+  final List<Map<String, dynamic>> _history = [];
 
   @override
   void initState() {
     super.initState();
-    _confettiController = ConfettiController(duration: const Duration(seconds: 2));
+    _confettiController =
+        ConfettiController(duration: const Duration(seconds: 2));
+
+    _history.addAll([
+      {
+        "title": "Alendea menyukai postingan parkiran kamu",
+        "tanggal": DateTime.now().subtract(const Duration(hours: 3)),
+        "type": "info",
+      },
+      {
+        "title": "Selamat! Kamu naik peringkat ke-5 pengguna teraktif 🎖️",
+        "tanggal": DateTime.now().subtract(const Duration(days: 1)),
+        "type": "achievement",
+      },
+      {
+        "title": "Ayo tukarkan koinmu untuk hadiah menarik di toko!",
+        "tanggal": DateTime.now().subtract(const Duration(days: 2)),
+        "type": "reminder",
+      },
+    ]);
   }
 
   @override
@@ -25,39 +81,95 @@ class _RewardScreenState extends State<RewardScreen> {
     super.dispose();
   }
 
-  void _showRedeemDialog(String itemName) {
+  // --- Fade muncul lembut tiap card ---
+  Widget _fadeInCard({required int index, required Widget child}) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 400 + (index * 100)),
+      curve: Curves.easeOutCubic,
+      builder: (_, value, childWidget) => Opacity(
+        opacity: value,
+        child: Transform.translate(
+          offset: Offset(0, 20 * (1 - value)),
+          child: childWidget,
+        ),
+      ),
+      child: child,
+    );
+  }
+
+  void _showRedeemDialog(Map<String, dynamic> item) {
+    if (totalKoin < (item['poin'] as num).toInt()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("❌ Koin kamu belum cukup untuk menukar hadiah ini."),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    final voucherCode = _generateVoucherCode();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          "Konfirmasi Penukaran",
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        title: Text("Tukar ${item['title']}",
+            style: const TextStyle(fontWeight: FontWeight.bold)),
         content: Text(
-          "Apakah Anda yakin ingin menukar koin Anda untuk mendapatkan $itemName?\n\nSilakan menuju ke Pusat Informasi untuk proses pengambilan hadiah 🎁",
+          "Apakah Anda yakin ingin menukar ${item['poin']} Koin untuk mendapatkan ${item['title']}?",
           textAlign: TextAlign.justify,
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Batal"),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1352C8),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
+                backgroundColor: primaryBlue,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
             onPressed: () {
               Navigator.pop(context);
               _confettiController.play();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    "Berhasil menukar hadiah: $itemName 🎉",
-                    style: const TextStyle(color: Colors.white),
+
+              setState(() {
+                totalKoin -= (item['poin'] as num).toInt();
+                _history.insert(0, {
+                  "title": "Menukar ${item['title']}",
+                  "tanggal": DateTime.now(),
+                  "voucher": voucherCode,
+                  "type": "redeem",
+                });
+              });
+
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  title: const Text("🎉 Penukaran Berhasil!"),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(item['title'],
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          textAlign: TextAlign.center),
+                      const SizedBox(height: 10),
+                      Text("Kode Voucher Kamu:",
+                          style: TextStyle(color: Colors.grey.shade700)),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(8)),
+                        child: Text(voucherCode,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                      ),
+                    ],
                   ),
-                  backgroundColor: Colors.green,
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Tutup"))
+                  ],
                 ),
               );
             },
@@ -68,272 +180,283 @@ class _RewardScreenState extends State<RewardScreen> {
     );
   }
 
+  String _generateVoucherCode() {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    return List.generate(8, (index) => chars[Random().nextInt(chars.length)]).join();
+  }
+
+  void _showCaraAmbilDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        title: const Text("📍 Cara Penukaran Hadiah"),
+        content: const Text(
+          "Tukar hadiah di Pusat Informasi Kampus dengan kode voucher kamu.\n"
+          "Penukaran bisa dilakukan pukul 08.00 - 16.00.",
+          textAlign: TextAlign.justify,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Tutup")),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Scaffold(
-          backgroundColor: const Color(0xFFE9EEF6),
-          appBar: AppBar(
-            elevation: 0,
-            backgroundColor: Colors.white,
-            title: const Text(
-              "Reward & Penukaran",
-              style: TextStyle(
-                color: Colors.black87,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            centerTitle: true,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black87),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(18),
+    return Stack(children: [
+      Scaffold(
+        backgroundColor: const Color(0xFFE9EEF6),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          title: const Text("Reward & Penukaran",
+              style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+          centerTitle: true,
+        ),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _headerCard(),
-                const SizedBox(height: 20),
-                _buildTabBar(),
                 const SizedBox(height: 18),
-                isTokoSelected ? _rewardGrid() : const RiwayatPenukaranSection(),
+                _buildTabBar(),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 400),
+                    child: isTokoSelected
+                        ? _buildRewardList(key: const ValueKey('toko'))
+                        : _buildHistoryList(key: const ValueKey('riwayat')),
+                  ),
+                ),
               ],
             ),
           ),
         ),
-
-        /// 🎉 efek confetti
-        Align(
-          alignment: Alignment.topCenter,
-          child: ConfettiWidget(
-            confettiController: _confettiController,
-            blastDirectionality: BlastDirectionality.explosive,
-            emissionFrequency: 0.04,
-            numberOfParticles: 20,
-            gravity: 0.3,
-            colors: const [
-              Colors.red,
-              Colors.blue,
-              Colors.green,
-              Colors.orange,
-              Colors.purple,
-              Colors.yellow
-            ],
-          ),
+      ),
+      Align(
+        alignment: Alignment.topCenter,
+        child: ConfettiWidget(
+          confettiController: _confettiController,
+          blastDirectionality: BlastDirectionality.explosive,
+          emissionFrequency: 0.04,
+          numberOfParticles: 25,
+          gravity: 0.3,
         ),
-      ],
-    );
+      ),
+    ]);
   }
 
-  // ==================== HEADER ====================
-  Widget _headerCard() {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0A3D91), Color(0xFF1352C8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+  Widget _headerCard() => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+              colors: [primaryBlue, primaryBlue.withOpacity(0.8)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: const [
+            BoxShadow(color: Color(0x22000000), blurRadius: 8, offset: Offset(0, 4))
+          ],
         ),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: const [
-          BoxShadow(color: Color(0x330A3D91), blurRadius: 6, offset: Offset(0, 3)),
-        ],
-      ),
-      child: Row(
-        children: const [
-          Icon(FontAwesomeIcons.coins, color: Colors.amber, size: 32),
-          SizedBox(width: 12),
+        child: Row(children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: const BoxDecoration(
+              color: Colors.greenAccent,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.attach_money, color: Colors.white, size: 26),
+          ),
+          const SizedBox(width: 14),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Total Koin Kamu", style: TextStyle(color: Colors.white70, fontSize: 14)),
-              Text(
-                "2.450 Koin",
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
-              ),
+              const Text("Total Koin Kamu", style: TextStyle(color: Colors.white70)),
+              const SizedBox(height: 6),
+              Text("$totalKoin Koin",
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  // ==================== TAB BAR CUSTOM ====================
-  Widget _buildTabBar() {
-    return Container(
-      height: 45,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(25),
-        boxShadow: const [
-          BoxShadow(color: Color(0x11000000), blurRadius: 6, offset: Offset(0, 3)),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => isTokoSelected = true),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                decoration: BoxDecoration(
-                  color: isTokoSelected ? const Color(0xFF1352C8) : Colors.white,
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                child: Center(
-                  child: Text(
-                    "Toko",
-                    style: TextStyle(
-                      color: isTokoSelected ? Colors.white : Colors.black87,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
+          const Spacer(),
+          ElevatedButton.icon(
+            onPressed: _showCaraAmbilDialog,
+            icon: const Icon(Icons.info_outline, color: Colors.white),
+            label: const Text("Cara Ambil", style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white24,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-          ),
-          Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => isTokoSelected = false),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                decoration: BoxDecoration(
-                  color: isTokoSelected ? Colors.white : const Color(0xFF1352C8),
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                child: Center(
-                  child: Text(
-                    "Riwayat Klaim",
-                    style: TextStyle(
-                      color: isTokoSelected ? Colors.black87 : Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+          )
+        ]),
+      );
 
-  // ==================== GRID HADIAH ====================
-  Widget _rewardGrid() {
-    final rewards = [
-      {"icon": FontAwesomeIcons.mugHot, "title": "Tumbler Eksklusif", "poin": 500},
-      // ignore: deprecated_member_use
-      {"icon": FontAwesomeIcons.tshirt, "title": "Hoodie Parkir", "poin": 800},
-      {"icon": FontAwesomeIcons.ticket, "title": "Voucher Belanja", "poin": 400},
-      {"icon": FontAwesomeIcons.gift, "title": "Kotak Misteri", "poin": 600},
-    ];
+  Widget _buildTabBar() => Container(
+        height: 45,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(25),
+          boxShadow: const [
+            BoxShadow(color: Color(0x11000000), blurRadius: 6, offset: Offset(0, 3))
+          ],
+        ),
+        child: Row(children: [
+          _tabButton("Toko", isTokoSelected, () => setState(() => isTokoSelected = true)),
+          _tabButton("Riwayat", !isTokoSelected, () => setState(() => isTokoSelected = false)),
+        ]),
+      );
 
-    return GridView.builder(
-      physics: const NeverScrollableScrollPhysics(),
-      shrinkWrap: true,
-      itemCount: rewards.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 0.8,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-      ),
-      itemBuilder: (context, index) {
-        final item = rewards[index];
-        return GestureDetector(
-          onTap: () => _showRedeemDialog(item["title"].toString()),
-          child: Container(
-            padding: const EdgeInsets.all(14),
+  Expanded _tabButton(String text, bool active, VoidCallback onTap) => Expanded(
+        child: GestureDetector(
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: const [
-                BoxShadow(color: Color(0x11000000), blurRadius: 6, offset: Offset(0, 3)),
-              ],
+              color: active ? primaryBlue : Colors.white,
+              borderRadius: BorderRadius.circular(25),
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(item["icon"] as IconData, color: const Color(0xFF1352C8), size: 42),
-                const SizedBox(height: 10),
-                Text(
-                  item["title"].toString(),
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 6),
-                Text("${item["poin"]} Koin", style: const TextStyle(color: Colors.green)),
-                const SizedBox(height: 10),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1352C8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  ),
-                  onPressed: () => _showRedeemDialog(item["title"].toString()),
-                  child: const Text("Tukar", style: TextStyle(color: Colors.white)),
-                ),
-              ],
-            ),
+            child: Center(
+                child: Text(text,
+                    style: TextStyle(
+                        color: active ? Colors.white : Colors.black87,
+                        fontWeight: FontWeight.bold))),
           ),
-        );
-      },
-    );
-  }
-}
+        ),
+      );
 
-// ==================== RIWAYAT PENUKARAN SECTION ====================
-class RiwayatPenukaranSection extends StatelessWidget {
-  const RiwayatPenukaranSection({super.key});
+  Widget _buildRewardList({Key? key}) => ListView.builder(
+        key: key,
+        physics: const BouncingScrollPhysics(),
+        itemCount: _rewards.length,
+        itemBuilder: (context, index) {
+          final item = _rewards[index];
+          final bisaTukar = totalKoin >= (item['poin'] as num).toInt();
 
-  @override
-  Widget build(BuildContext context) {
-    final riwayat = [
-      {"hadiah": "Tumbler Eksklusif", "tanggal": "05 Okt 2025"},
-      {"hadiah": "Voucher Belanja", "tanggal": "02 Okt 2025"},
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final item in riwayat)
-          Container(
-            margin: const EdgeInsets.only(bottom: 14),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: const [
-                BoxShadow(color: Color(0x11000000), blurRadius: 6, offset: Offset(0, 3)),
-              ],
-            ),
-            child: Row(
-              children: [
-                const Icon(FontAwesomeIcons.gift, color: Color(0xFF1352C8), size: 24),
+          return _fadeInCard(
+            index: index,
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: const [
+                  BoxShadow(color: Color(0x11000000), blurRadius: 8, offset: Offset(0, 4))
+                ],
+              ),
+              child: Row(children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: (item['color'] as Color).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(item['icon'], color: item['color'] as Color, size: 30),
+                ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(item["hadiah"].toString(),
+                      Text(item['title'],
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 16)),
+                      const SizedBox(height: 4),
+                      Text(item['subtitle'],
+                          style: const TextStyle(color: Colors.black54)),
+                      const SizedBox(height: 8),
+                      Text("${item['poin']} Koin",
+                          style: const TextStyle(
+                              color: Colors.green, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: bisaTukar ? () => _showRedeemDialog(item) : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: bisaTukar ? primaryBlue : Colors.grey.shade400,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text("Tukar", style: TextStyle(color: Colors.white)),
+                ),
+              ]),
+            ),
+          );
+        },
+      );
+
+  Widget _buildHistoryList({Key? key}) => ListView.builder(
+        key: key,
+        physics: const BouncingScrollPhysics(),
+        itemCount: _history.length,
+        itemBuilder: (context, index) {
+          final item = _history[index];
+          final type = item["type"] ?? "redeem";
+
+          IconData icon;
+          Color iconColor;
+
+          switch (type) {
+            case "achievement":
+              icon = FontAwesomeIcons.trophy;
+              iconColor = Colors.amber;
+              break;
+            case "reminder":
+              icon = FontAwesomeIcons.bell;
+              iconColor = Colors.green;
+              break;
+            case "info":
+              icon = FontAwesomeIcons.solidHeart;
+              iconColor = Colors.pinkAccent;
+              break;
+            default:
+              icon = FontAwesomeIcons.clockRotateLeft;
+              iconColor = Colors.blueAccent;
+          }
+
+          return _fadeInCard(
+            index: index,
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: const [
+                  BoxShadow(color: Color(0x11000000), blurRadius: 6, offset: Offset(0, 3))
+                ],
+              ),
+              child: Row(children: [
+                Icon(icon, color: iconColor, size: 26),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(item['title'],
                           style: const TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 15)),
                       const SizedBox(height: 4),
                       Text(
-                        "Tanggal penukaran: ${item["tanggal"]}",
+                        "Tanggal: ${item['tanggal'].day}/${item['tanggal'].month}/${item['tanggal'].year}",
                         style: const TextStyle(color: Colors.black54, fontSize: 13),
                       ),
+                      if (item['voucher'] != null)
+                        Text("Kode: ${item['voucher']}",
+                            style: const TextStyle(
+                                color: Colors.blueGrey, fontSize: 13)),
                     ],
                   ),
                 ),
-              ],
+              ]),
             ),
-          ),
-      ],
-    );
-  }
+          );
+        },
+      );
 }

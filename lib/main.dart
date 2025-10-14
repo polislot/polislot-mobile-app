@@ -50,7 +50,7 @@ class PoliSlotApp extends StatelessWidget {
         AppRoutes.mission: (_) => const MissionScreen(),
         AppRoutes.reward: (_) => const RewardScreen(),
         AppRoutes.profile: (_) => const ProfileScreen(),
-        AppRoutes.parkir: (_) => const ParkirScreen(),
+        AppRoutes.parkir: (_) => const ParkirFullScreen(),
         AppRoutes.info: (_) => const InfoScreen(),
         '/camera': (_) => const CameraScreen(), // optional kamera
       },
