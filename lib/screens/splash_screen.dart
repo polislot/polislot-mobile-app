@@ -84,11 +84,43 @@ class _SplashScreenState extends State<SplashScreen>
 
     _mainController.forward();
 
-    Timer(const Duration(seconds: 4), () {
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, AppRoutes.loginRegis);
+    _startApp();
+  }
+
+  Future<void> _startApp() async {
+    await Future.delayed(const Duration(seconds: 4));
+
+    // final prefs = await SharedPreferences.getInstance();
+    // final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+    // final bool isVerified = prefs.getBool('isVerified') ?? false;
+    // final String? email = prefs.getString('email');
+
+    if (!mounted) return;
+
+    // --- LOGIKA LAMA (DINONAKTIFKAN SEMENTARA) ---
+    /*
+    if (!isLoggedIn) {
+      // Belum login → ke halaman login/register
+      Navigator.pushReplacementNamed(context, AppRoutes.loginRegis);
+    } else {
+      // Sudah login → cek apakah dari hasil register belum verifikasi?
+      if (!isVerified && email != null) {
+        // Registrasi baru tapi belum OTP
+        Navigator.pushReplacementNamed(
+          context,
+          AppRoutes.verifyOtp,
+          arguments: {'email': email},
+        );
+      } else {
+        // Sudah login & verified → ke Home
+        Navigator.pushReplacementNamed(context, AppRoutes.home);
       }
-    });
+    }
+    */
+    // ---------------------------------------------
+
+    // ✅ LOGIKA BARU: SELALU arahkan ke halaman login/register
+    Navigator.pushReplacementNamed(context, AppRoutes.loginRegis);
   }
 
   @override
@@ -116,17 +148,19 @@ class _SplashScreenState extends State<SplashScreen>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  const Color(0xFF0D47A1), // deep royal blue
-                  Color.lerp(const Color(0xFF1976D2), const Color(0xFF42A5F5),
-                      _glowPulseController.value - 0.8)!,
-                  const Color(0xFF64B5F6), // soft sky blue
+                  const Color(0xFF0D47A1),
+                  Color.lerp(
+                    const Color(0xFF1976D2),
+                    const Color(0xFF42A5F5),
+                    _glowPulseController.value - 0.8,
+                  )!,
+                  const Color(0xFF64B5F6),
                 ],
               ),
             ),
             child: Stack(
               alignment: Alignment.center,
               children: [
-                // glow halus di belakang logo
                 Positioned(
                   top: MediaQuery.of(context).size.height * 0.38,
                   child: AnimatedBuilder(
@@ -142,7 +176,8 @@ class _SplashScreenState extends State<SplashScreen>
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.lightBlueAccent.withOpacity(
-                                    (0.5 * _fadeLogo.value).clamp(0, 1)),
+                                  (0.5 * _fadeLogo.value).clamp(0, 1),
+                                ),
                                 blurRadius: 90,
                                 spreadRadius: 40,
                               ),
@@ -153,7 +188,6 @@ class _SplashScreenState extends State<SplashScreen>
                     },
                   ),
                 ),
-
                 Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -164,13 +198,11 @@ class _SplashScreenState extends State<SplashScreen>
                         child: const Icon(
                           Icons.location_on_outlined,
                           color: Colors.white,
-                          size: 85, // lebih ramping
+                          size: 85,
                         ),
                       ),
                     ),
                     const SizedBox(height: 16),
-
-                    // shimmer text PoliSlot
                     SlideTransition(
                       position: _slideText,
                       child: FadeTransition(
@@ -210,7 +242,6 @@ class _SplashScreenState extends State<SplashScreen>
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 10),
                     FadeTransition(
                       opacity: _fadeSubtitle,

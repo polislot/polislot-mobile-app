@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../routes/api_service.dart'; // Import ApiService dari folder routes
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -15,11 +17,15 @@ class _ProfileScreenState extends State<ProfileScreen>
     with TickerProviderStateMixin {
   int _sectionIndex = 0;
   File? _selectedImage;
+  bool _isLoading = false;
 
-  final TextEditingController _emailController =
-      TextEditingController(text: "yani123@gmail.com");
-  final TextEditingController _nameController =
-      TextEditingController(text: "Andri Yani Meuraxa");
+  // Data user dari session
+  String _userName = "Loading...";
+  String _userEmail = "Loading...";
+  String? _accessToken;
+
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
   final TextEditingController _confirmPassController = TextEditingController();
   final TextEditingController _judulCtrl = TextEditingController();
@@ -39,7 +45,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     'Saran Perbaikan'
   ];
 
-  // animasi hanya untuk menu utama
   late final AnimationController _menuAnimCtrl;
   late final List<Animation<double>> _fadeAnims;
   late final List<Animation<Offset>> _slideAnims;
@@ -47,6 +52,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   void initState() {
     super.initState();
+    _loadUserData();
+    
     _menuAnimCtrl =
         AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
 
@@ -74,9 +81,29 @@ class _ProfileScreenState extends State<ProfileScreen>
     _menuAnimCtrl.forward();
   }
 
+  // Load user data dari SharedPreferences
+  Future<void> _loadUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _userName = prefs.getString('user_name') ?? 'User';
+      _userEmail = prefs.getString('user_email') ?? 'user@email.com';
+      _accessToken = prefs.getString('access_token');
+      
+      // Set controller values
+      _nameController.text = _userName;
+      _emailController.text = _userEmail;
+    });
+  }
+
   @override
   void dispose() {
     _menuAnimCtrl.dispose();
+    _emailController.dispose();
+    _nameController.dispose();
+    _passController.dispose();
+    _confirmPassController.dispose();
+    _judulCtrl.dispose();
+    _deskripsiCtrl.dispose();
     super.dispose();
   }
 
@@ -87,62 +114,134 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (picked != null) setState(() => _selectedImage = File(picked.path));
   }
 
+  // Fungsi logout dengan API
+  Future<void> _performLogout() async {
+    if (_accessToken == null) {
+      _showErrorSnackBar('Token tidak ditemukan. Silakan login ulang.');
+      _navigateToLogin();
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final result = await ApiService.logout(_accessToken!);
+      
+      if (result['statusCode'] == 200) {
+        // Hapus data session
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.clear();
+        
+        // Tutup dialog
+        if (mounted) Navigator.pop(context);
+        
+        // Navigasi ke login
+        _navigateToLogin();
+        
+        // Show success message
+        _showSuccessSnackBar('Logout berhasil');
+      } else {
+        _showErrorSnackBar(result['body']['message'] ?? 'Logout gagal');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Error: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _navigateToLogin() {
+    // Ganti dengan route ke halaman login Anda
+    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    // Atau jika menggunakan MaterialPageRoute:
+    // Navigator.pushAndRemoveUntil(
+    //   context,
+    //   MaterialPageRoute(builder: (_) => const LoginScreen()),
+    //   (route) => false,
+    // );
+  }
+
+  void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showSuccessSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   void _showLogoutDialog() {
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        backgroundColor: const Color(0xFFEEF3FF),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.warning_amber_rounded,
-                  color: Color(0xFF0A4AE1), size: 50),
-              const SizedBox(height: 10),
-              const Text("Konfirmasi Logout",
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0A3D91),
-                      fontSize: 18)),
-              const SizedBox(height: 10),
-              const Text(
-                "Apakah Anda yakin ingin keluar dari akun Anda?",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.black87),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey[300],
-                        foregroundColor: Colors.black87,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                        minimumSize: const Size(110, 44)),
-                    child: const Text("Batal"),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Logout berhasil")));
-                    },
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0A4AE1),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                        minimumSize: const Size(110, 44)),
-                    child: const Text("Ya, Keluar"),
-                  ),
-                ],
-              )
-            ],
+      barrierDismissible: !_isLoading,
+      builder: (context) => WillPopScope(
+        onWillPop: () async => !_isLoading,
+        child: Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          backgroundColor: const Color(0xFFEEF3FF),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.warning_amber_rounded,
+                    color: Color(0xFF0A4AE1), size: 50),
+                const SizedBox(height: 10),
+                const Text("Konfirmasi Logout",
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0A3D91),
+                        fontSize: 18)),
+                const SizedBox(height: 10),
+                const Text(
+                  "Apakah Anda yakin ingin keluar dari akun Anda?",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.black87),
+                ),
+                const SizedBox(height: 24),
+                if (_isLoading)
+                  const CircularProgressIndicator()
+                else
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey[300],
+                            foregroundColor: Colors.black87,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                            minimumSize: const Size(110, 44)),
+                        child: const Text("Batal"),
+                      ),
+                      ElevatedButton(
+                        onPressed: _performLogout,
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0A4AE1),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                            minimumSize: const Size(110, 44)),
+                        child: const Text("Ya, Keluar"),
+                      ),
+                    ],
+                  )
+              ],
+            ),
           ),
         ),
       ),
@@ -239,18 +338,18 @@ class _ProfileScreenState extends State<ProfileScreen>
                       : null,
                 ),
                 const SizedBox(width: 14),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("Andri Yani Meuraxa",
-                          style: TextStyle(
+                      Text(_userName,
+                          style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: Colors.black87)),
-                      SizedBox(height: 4),
-                      Text("yani123@gmail.com",
-                          style: TextStyle(color: Colors.black54)),
+                      const SizedBox(height: 4),
+                      Text(_userEmail,
+                          style: const TextStyle(color: Colors.black54)),
                     ],
                   ),
                 ),
@@ -358,9 +457,18 @@ class _ProfileScreenState extends State<ProfileScreen>
             obscure: true),
         const SizedBox(height: 24),
         ElevatedButton(
-          onPressed: () {
-            ScaffoldMessenger.of(context)
-                .showSnackBar(const SnackBar(content: Text("Perubahan disimpan")));
+          onPressed: () async {
+            // TODO: Implement update profile API
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('user_name', _nameController.text);
+            await prefs.setString('user_email', _emailController.text);
+            
+            setState(() {
+              _userName = _nameController.text;
+              _userEmail = _emailController.text;
+            });
+            
+            _showSuccessSnackBar("Perubahan disimpan");
             _changeSection(0);
           },
           style: ElevatedButton.styleFrom(
@@ -447,8 +555,8 @@ class _ProfileScreenState extends State<ProfileScreen>
         const SizedBox(height: 20),
         ElevatedButton(
           onPressed: () {
-            ScaffoldMessenger.of(context)
-                .showSnackBar(const SnackBar(content: Text("Masukan berhasil dikirim")));
+            // TODO: Implement submit feedback API
+            _showSuccessSnackBar("Masukan berhasil dikirim");
             _changeSection(0);
           },
           style: ElevatedButton.styleFrom(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'routes/app_routes.dart';
 import 'theme/app_theme.dart';
 
@@ -15,9 +16,21 @@ import 'screens/reward_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/parkir_screen.dart';
 import 'screens/info_screen.dart';
-import 'screens/camera_screen.dart'; // ✅ jika kamu punya kamera
+import 'screens/camera_screen.dart';
+import 'screens/verify_otp_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // 🔧 Atur orientasi & status bar biar clean
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent, // transparan
+      statusBarIconBrightness: Brightness.light,
+    ),
+  );
+
   runApp(const PoliSlotApp());
 }
 
@@ -35,10 +48,10 @@ class PoliSlotApp extends StatelessWidget {
         colorSchemeSeed: AppTheme.primaryLight,
       ),
 
-      // ✅ halaman pertama yang muncul
+      // ✅ Halaman pertama
       initialRoute: AppRoutes.splash,
 
-      // ✅ daftar route sesuai AppRoutes
+      // ✅ Semua route di app
       routes: {
         AppRoutes.splash: (_) => const SplashScreen(),
         AppRoutes.loginRegis: (_) => const LoginRegisScreen(),
@@ -52,7 +65,8 @@ class PoliSlotApp extends StatelessWidget {
         AppRoutes.profile: (_) => const ProfileScreen(),
         AppRoutes.parkir: (_) => const ParkirFullScreen(),
         AppRoutes.info: (_) => const InfoScreen(),
-        '/camera': (_) => const CameraScreen(), // optional kamera
+        AppRoutes.verifyOtp: (context) => VerifyOtpScreen(),
+        '/camera': (_) => const CameraScreen(),
       },
     );
   }
