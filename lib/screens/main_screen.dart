@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
+
+// pastikan semua file ini ada di folder lib/
 import 'home_screen.dart';
 import 'mission_screen.dart';
 import 'parkir_screen.dart';
@@ -19,10 +21,11 @@ class _MainScreenState extends State<MainScreen>
   late final AnimationController _controller;
   late final Animation<double> _fadeAnimation;
 
+  // daftar halaman
   final List<Widget> _pages = const [
     HomeScreen(),
     MissionScreen(),
-    ParkirFullScreen(),
+    AreaParkirScreen(),
     RewardScreen(),
     ProfileScreen(),
   ];
@@ -50,15 +53,17 @@ class _MainScreenState extends State<MainScreen>
   void _onTabChanged(int index) {
     if (index == _selectedIndex) return;
     _controller.reverse().then((_) {
-      setState(() => _selectedIndex = index);
-      _controller.forward();
+      if (mounted) {
+        setState(() => _selectedIndex = index);
+        _controller.forward();
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF3F6FB),
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: IndexedStack(
@@ -80,30 +85,23 @@ class _MainScreenState extends State<MainScreen>
         child: SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 14, // ✅ sedikit lebih kecil
-              vertical: 6, // ✅ fix overflow di semua layar
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             child: GNav(
               gap: 8,
-              backgroundColor: Colors.white,
-              color: const Color(0xFF1352C8), // ikon & teks default biru
-              activeColor: Colors.white, // ikon & teks aktif putih
+              color: Color(0xFF5A6BB5), // ikon & teks nonaktif lembut
+              activeColor: Colors.white,
               textStyle: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w600,
                 fontSize: 13.5,
               ),
-              iconSize: 25,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 15,
-                vertical: 9,
-              ),
+              iconSize: 24,
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 9),
               duration: const Duration(milliseconds: 300),
               tabBackgroundGradient: const LinearGradient(
                 colors: [
-                  Color(0xFF1352C8),
-                  Color(0xFF0A3D91),
+                  Color(0xFF1565C0),
+                  Color(0xFF2196F3),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -111,9 +109,9 @@ class _MainScreenState extends State<MainScreen>
               tabs: const [
                 GButton(icon: Icons.home_rounded, text: 'Home'),
                 GButton(icon: Icons.flag_outlined, text: 'Misi'),
-                GButton(icon: Icons.local_parking, text: 'Parkir'),
-                GButton(icon: Icons.card_giftcard, text: 'Reward'),
-                GButton(icon: Icons.person_outline, text: 'Profil'),
+                GButton(icon: Icons.local_parking_rounded, text: 'Parkir'),
+                GButton(icon: Icons.card_giftcard_rounded, text: 'Reward'),
+                GButton(icon: Icons.person_outline_rounded, text: 'Profil'),
               ],
               selectedIndex: _selectedIndex,
               onTabChange: _onTabChanged,

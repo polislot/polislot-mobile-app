@@ -1,235 +1,624 @@
-// lib/parkir_full_final.dart
+// parkir_final_all_pages.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+/// ---------------- Palet Warna ----------------
+const Color _primaryColor = Color(0xFF1565C0); // Biru Tua
+const Color _accentColor = Color(0xFF2196F3); // Biru Muda
+const Color _backgroundColor = Color(0xFFFFFFFF); // Putih
+const Color _lightGray = Color(0xFFE0E0E0); // Abu Muda
+// ignore: unused_element
+const Color _darkText = Color(0xFF212121); // Hitam Abu
 
 void main() {
-  runApp(
-    MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: const Color(0xFF1976D2),
-      ),
-      home: const ParkirFullScreen(),
-    ),
-  );
+  runApp(const MaterialApp(
+    home: AreaParkirScreen(),
+    debugShowCheckedModeBanner: false,
+  ));
 }
 
-class ParkirFullScreen extends StatefulWidget {
-  const ParkirFullScreen({super.key});
+/// ---------------- MAIN SCREEN ----------------
+class AreaParkirScreen extends StatefulWidget {
+  const AreaParkirScreen({super.key});
 
   @override
-  State<ParkirFullScreen> createState() => _ParkirFullScreenState();
+  State<AreaParkirScreen> createState() => _AreaParkirScreenState();
 }
 
-class _ParkirFullScreenState extends State<ParkirFullScreen> {
+class _AreaParkirScreenState extends State<AreaParkirScreen> {
   final ImagePicker _picker = ImagePicker();
 
-  static const LatLng _polibatamLatLng = LatLng(1.1464, 104.0077);
-
+  // contoh data area
   final List<Map<String, dynamic>> _areas = [
     {
       'id': 'A',
-      'name': 'Parkiran Gedung Utama',
+      'name': 'Parkir Gedung Utama',
       'services': ['Cuci Mobil', 'Tambal Ban', 'Servis'],
       'slots': [
         {'name': 'A1', 'status': 'Tersedia'},
         {'name': 'A2', 'status': 'Terisi'},
+        {'name': 'A3', 'status': 'Tersedia'},
+        {'name': 'A4', 'status': 'Tersedia'},
       ],
-      'posts': <Map<String, dynamic>>[],
+      'capacity': 100,
+      'used': 15,
+      'lat': -6.200000,
+      'lng': 106.816666,
+      'validations': <Map<String, dynamic>>[],
     },
     {
       'id': 'B',
-      'name': 'Parkiran Gedung Tecno',
+      'name': 'Parkir Gedung Tecno',
       'services': ['Cuci Mobil', 'Servis'],
       'slots': [
         {'name': 'B1', 'status': 'Tersedia'},
         {'name': 'B2', 'status': 'Terisi'},
       ],
-      'posts': <Map<String, dynamic>>[],
-    },
-    {
-      'id': 'C',
-      'name': 'Parkiran Gedung RTF',
-      'services': ['Tambal Ban'],
-      'slots': [
-        {'name': 'C1', 'status': 'Tersedia'},
-      ],
-      'posts': <Map<String, dynamic>>[],
+      'capacity': 50,
+      'used': 8,
+      'lat': -6.201000,
+      'lng': 106.817500,
+      'validations': <Map<String, dynamic>>[],
     },
   ];
 
-  // --- FUNGSI ANIMASI TRANSISI FADE ---
-  Route _fadeRoute(Widget page) {
-    return PageRouteBuilder(
-      pageBuilder: (_, __, ___) => page,
-      transitionsBuilder: (_, animation, __, child) {
-        return FadeTransition(opacity: animation, child: child);
-      },
-      transitionDuration: const Duration(milliseconds: 400),
+  int _countAvailableSlots(List<dynamic> slots) =>
+      slots.where((s) => s['status'] == 'Tersedia').length;
+
+  int _getTotalCapacity() =>
+      _areas.fold<int>(0, (sum, area) => sum + (area['capacity'] as int));
+
+  int _getTotalAvailable() => _areas.fold<int>(
+        0,
+        (sum, area) => sum + _countAvailableSlots(area['slots']),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final totalCapacity = _getTotalCapacity();
+    final totalAvailable = _getTotalAvailable();
+
+    return Scaffold(
+      backgroundColor: _backgroundColor,
+      appBar: AppBar(
+        backgroundColor: _backgroundColor,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        title: const Text(
+          'Parkir Kampus',
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            children: [
+              const SizedBox(height: 8),
+              // Card total kapasitas kampus
+              Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [_primaryColor, _accentColor],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _accentColor.withOpacity(0.16),
+                      blurRadius: 10,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.local_parking,
+                        color: Colors.white, size: 28),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '$totalAvailable Slot Tersedia',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Dari $totalCapacity kapasitas',
+                            style: const TextStyle(
+                                color: Colors.white70, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, color: Colors.white),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: ListView.separated(
+                  itemCount: _areas.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (ctx, index) {
+                    final area = _areas[index];
+                    return _ParkirAreaCard(
+                      area: area,
+                      onOpenKomunitas: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              KomunitasPage(area: area, picker: _picker),
+                        ),
+                      ),
+                      onOpenTambah: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => TambahSlotPage(
+                            area: area,
+                            picker: _picker,
+                            onValidate: (v) =>
+                                setState(() => area['validations'].add(v)),
+                            onUpdate: () => setState(() {}),
+                          ),
+                        ),
+                      ),
+                      onOpenMaps: () => _openMaps(area['lat'], area['lng']),
+                      onOpenDetail: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => DetailAreaPage(
+                            area: area,
+                            picker: _picker,
+                            onValidate: (v) =>
+                                setState(() => area['validations'].add(v)),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  // --- MAP MODAL ---
-  void _openMapModal(String areaName) {
-    Navigator.of(context).push(_fadeRoute(
-      Scaffold(
-        appBar: AppBar(
-          title: Text('Lokasi - $areaName'),
-          backgroundColor: const Color(0xFF1976D2),
-          foregroundColor: Colors.white,
-        ),
-        body: GoogleMap(
-          mapType: MapType.normal,
-          initialCameraPosition: const CameraPosition(
-            target: _polibatamLatLng,
-            zoom: 16,
-          ),
-          markers: {
-            Marker(
-              markerId: const MarkerId('polibatam'),
-              position: _polibatamLatLng,
-              infoWindow: const InfoWindow(title: 'Politeknik Negeri Batam'),
-            ),
-          },
-        ),
-      ),
-    ));
+  Future<void> _openMaps(double lat, double lng) async {
+    final uri = Uri.parse('https://www.google.com/maps?q=$lat,$lng');
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      // ignore: use_build_context_synchronously
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal membuka Maps')),
+      );
+    }
   }
+}
 
-  // --- LAYANAN MODAL ---
-  void _showServicesModal(String areaName, List<String> services) {
-    Navigator.of(context).push(_fadeRoute(
-      Scaffold(
-        appBar: AppBar(
-          title: Text('Layanan - $areaName'),
-          backgroundColor: const Color(0xFF1976D2),
-          foregroundColor: Colors.white,
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Center(
-            child: Wrap(
-              spacing: 20,
-              runSpacing: 20,
-              alignment: WrapAlignment.center,
-              children: services.isEmpty
-                  ? [const Text('Tidak ada layanan tersedia')]
-                  : services.map((s) {
-                      IconData ic = Icons.miscellaneous_services;
-                      Color c = Colors.blue;
-                      if (s.contains('Cuci')) {
-                        ic = Icons.local_car_wash;
-                        c = Colors.lightBlue;
-                      } else if (s.contains('Tambal')) {
-                        ic = Icons.build;
-                        c = Colors.orange;
-                      } else if (s.contains('Servis')) {
-                        ic = Icons.settings;
-                        c = Colors.green;
-                      }
-                      return Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircleAvatar(
-                              radius: 30,
-                              backgroundColor: c.withOpacity(0.12),
-                              child: Icon(ic, color: c, size: 26)),
-                          const SizedBox(height: 8),
-                          Text(s, textAlign: TextAlign.center),
-                        ],
-                      );
-                    }).toList(),
-            ),
+/// ---------- Card Area Parkir ----------
+class _ParkirAreaCard extends StatelessWidget {
+  final Map<String, dynamic> area;
+  final VoidCallback onOpenKomunitas;
+  final VoidCallback onOpenTambah;
+  final VoidCallback onOpenMaps;
+  final VoidCallback onOpenDetail;
+
+  const _ParkirAreaCard({
+    required this.area,
+    required this.onOpenKomunitas,
+    required this.onOpenTambah,
+    required this.onOpenMaps,
+    required this.onOpenDetail,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final int used = area['used'] as int;
+    final int capacity = area['capacity'] as int;
+    final double usedPct = capacity > 0 ? used / capacity : 0;
+    final slots = area['slots'] as List;
+    final availableCount =
+        slots.where((s) => s['status'] == 'Tersedia').length;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
           ),
-        ),
+        ],
       ),
-    ));
-  }
-
-  // --- TAMBAH SLOT ---
-  void _openAddSlotModal(int areaIndex) {
-    String? selectedSlot;
-    String status = 'Tersedia';
-    File? selectedImage;
-    final TextEditingController descCtrl = TextEditingController();
-    final String areaId = _areas[areaIndex]['id'] as String;
-    final List<String> generatedSlots =
-        List.generate(6, (i) => '$areaId${i + 1}');
-
-    showDialog(
-      context: context,
-      builder: (ctx) => FadeTransition(
-        opacity: CurvedAnimation(
-          parent: ModalRoute.of(ctx)!.animation!,
-          curve: Curves.easeInOut,
-        ),
-        child: AlertDialog(
-          title: const Text('Tambah Slot Parkir'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButtonFormField<String>(
-                  value: selectedSlot,
-                  hint: const Text('Pilih Slot (mis: A3)'),
-                  onChanged: (v) => selectedSlot = v,
-                  items: generatedSlots
-                      .map((s) =>
-                          DropdownMenuItem(value: s, child: Text(s)))
-                      .toList(),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // header
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                      colors: [_primaryColor, _accentColor],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  value: status,
-                  items: const [
-                    DropdownMenuItem(
-                        value: 'Tersedia', child: Text('Tersedia')),
-                    DropdownMenuItem(value: 'Terisi', child: Text('Terisi')),
+                child: const Icon(Icons.location_city, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(area['name'],
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 6),
+                    // usage bar (small)
+                    Stack(children: [
+                      Container(
+                          height: 8,
+                          decoration: BoxDecoration(
+                              color: _lightGray,
+                              borderRadius: BorderRadius.circular(6))),
+                      FractionallySizedBox(
+                        widthFactor: usedPct,
+                        child: Container(
+                          height: 8,
+                          decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                  colors: [_primaryColor, _accentColor]),
+                              borderRadius: BorderRadius.circular(6)),
+                        ),
+                      ),
+                    ]),
+                    const SizedBox(height: 6),
+                    Text("$used dari $capacity terpakai",
+                        style:
+                            const TextStyle(color: Colors.black54, fontSize: 12)),
                   ],
-                  onChanged: (v) => status = v!,
                 ),
-                const SizedBox(height: 8),
-                TextField(
-                    controller: descCtrl,
-                    decoration: const InputDecoration(
-                        labelText: 'Deskripsi (opsional)')),
-                const SizedBox(height: 8),
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    final x = await _picker.pickImage(
-                        source: ImageSource.camera, imageQuality: 80);
-                    if (x != null) {
-                      selectedImage = File(x.path);
-                    }
-                  },
-                  icon: const Icon(Icons.camera_alt),
-                  label: const Text('Ambil Foto'),
-                ),
-              ],
+              ),
+              IconButton(
+                  onPressed: onOpenMaps,
+                  icon: const Icon(Icons.map_outlined, color: _accentColor)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          InkWell(
+            onTap: onOpenDetail,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                    colors: [_primaryColor, _accentColor]),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.local_parking, color: Colors.white),
+                  const SizedBox(width: 10),
+                  Expanded(
+                      child: Text("$availableCount Slot Tersedia",
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold))),
+                  const Icon(Icons.chevron_right, color: Colors.white),
+                ],
+              ),
             ),
           ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Batal')),
-            ElevatedButton(
-              onPressed: () {
-                if (selectedSlot != null) {
-                  setState(() {
-                    _areas[areaIndex]['slots'].add({
-                      'name': selectedSlot,
-                      'status': status,
-                      'photo': selectedImage,
-                      'desc': descCtrl.text,
-                    });
-                  });
-                  Navigator.pop(ctx);
-                }
-              },
-              child: const Text('Tambah'),
+          const SizedBox(height: 10),
+          // layanan (ikon + label kecil)
+          _LayananList(services: List<String>.from(area['services'] as List)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _SmallIconAction(
+                  icon: Icons.forum_outlined,
+                  label: 'Komunitas',
+                  onTap: onOpenKomunitas),
+              const SizedBox(width: 8),
+              _SmallIconAction(
+                  icon: Icons.add_circle_outline,
+                  label: 'Tambah',
+                  onTap: onOpenTambah),
+              const SizedBox(width: 8),
+              _SmallIconAction(icon: Icons.map, label: 'Maps', onTap: onOpenMaps),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// ---------- Small Icon ----------
+class _SmallIconAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  const _SmallIconAction(
+      {required this.icon, required this.label, required this.onTap});
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+        onTap: onTap,
+        child: SizedBox(
+            width: 44,
+            height: 44,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 22, color: _primaryColor),
+              ],
+            )));
+  }
+}
+
+/// ---------- Layanan List (ikon + teks kecil) ----------
+class _LayananList extends StatelessWidget {
+  final List<String> services;
+  // ignore: use_super_parameters
+  const _LayananList({Key? key, required this.services}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: services.map((s) {
+        final icon = _serviceIcon(s);
+        final color = _serviceColor(s);
+        return Container(
+          margin: const EdgeInsets.only(right: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 6),
+            Text(s, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+          ]),
+        );
+      }).toList(),
+    );
+  }
+
+  IconData _serviceIcon(String s) {
+    final lower = s.toLowerCase();
+    if (lower.contains('cuci')) return Icons.local_laundry_service;
+    if (lower.contains('tambal')) return Icons.build;
+    if (lower.contains('servis')) return Icons.car_repair;
+    return Icons.miscellaneous_services;
+  }
+
+  Color _serviceColor(String s) {
+    final lower = s.toLowerCase();
+    if (lower.contains('cuci')) return Colors.orange;
+    if (lower.contains('tambal')) return Colors.green;
+    if (lower.contains('servis')) return Colors.purple;
+    return _accentColor;
+  }
+}
+
+/// ---------- DETAIL AREA PAGE ----------
+class DetailAreaPage extends StatefulWidget {
+  final Map<String, dynamic> area;
+  final ImagePicker picker;
+  final Function(Map<String, dynamic>) onValidate;
+
+  const DetailAreaPage({
+    super.key,
+    required this.area,
+    required this.picker,
+    required this.onValidate,
+  });
+
+  @override
+  State<DetailAreaPage> createState() => _DetailAreaPageState();
+}
+
+class _DetailAreaPageState extends State<DetailAreaPage> {
+  @override
+  Widget build(BuildContext context) {
+    final area = widget.area;
+    final int used = area['used'] as int;
+    final int capacity = area['capacity'] as int;
+    final slots = area['slots'] as List;
+
+    return Scaffold(
+      backgroundColor: _backgroundColor,
+      appBar: AppBar(
+        backgroundColor: _backgroundColor,
+        elevation: 0,
+        title: Text(area['name'],
+            style: const TextStyle(
+                color: Colors.black, fontWeight: FontWeight.bold)),
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // kartu status kapasitas (judul changed)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                    colors: [_primaryColor, _accentColor],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("Status Kapasitas Area",
+                      style: TextStyle(color: Colors.white70, fontSize: 12)),
+                  const SizedBox(height: 6),
+                  Text("$used / $capacity terpakai",
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16)),
+                  const SizedBox(height: 8),
+                  // UsageBarChart uses different gradient (green -> blue)
+                  UsageBarChart(used: used, capacity: capacity),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Align(
+                alignment: Alignment.centerLeft,
+                child: Text("Daftar Slot",
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 15))),
+            const SizedBox(height: 8),
+            Expanded(
+              child: ListView.builder(
+                itemCount: slots.length,
+                itemBuilder: (context, idx) {
+                  final slot = slots[idx] as Map<String, dynamic>;
+                  final isAvailable = slot['status'] == 'Tersedia';
+                  final validations =
+                      List<Map<String, dynamic>>.from(widget.area['validations'] as List);
+                  final slotValidations = validations
+                      .where((v) => v['slot'] == slot['name'])
+                      .toList();
+
+                  return Card(
+                    color: isAvailable ? Colors.white : Colors.grey[100],
+                    elevation: 2,
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: CircleAvatar(
+                              backgroundColor: isAvailable
+                                  ? _accentColor
+                                  : Colors.redAccent,
+                              child: Icon(
+                                  isAvailable ? Icons.check : Icons.close,
+                                  color: Colors.white),
+                            ),
+                            title: Text(slot['name']),
+                            subtitle:
+                                Text("Status: ${slot['status']}", style: const TextStyle(fontSize: 13)),
+                            trailing: isAvailable
+                                ? ElevatedButton(
+                                    onPressed: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => TambahSlotPage(
+                                          area: widget.area,
+                                          picker: widget.picker,
+                                          onValidate: widget.onValidate,
+                                          onUpdate: () => setState(() {}),
+                                          preselectedSlot: slot['name'],
+                                        ),
+                                      ),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: _primaryColor,
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8)),
+                                    ),
+                                    child: const Text('Validasi Slot Ini'),
+                                  )
+                                : TextButton(
+                                    onPressed: () {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(const SnackBar(
+                                        content: Text(
+                                            '❌ Slot ini sedang terisi, tidak bisa divalidasi.'),
+                                        backgroundColor: Colors.redAccent,
+                                      ));
+                                    },
+                                    child: const Text('Tidak Bisa'),
+                                  ),
+                          ),
+                          if (slotValidations.isNotEmpty) ...[
+                            const Divider(),
+                            const Text("📸 Validasi Terakhir:",
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 13)),
+                            const SizedBox(height: 6),
+                            for (final v in slotValidations)
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // safety: cek path dan file exist
+                                  if (v['photoPath'] != null &&
+                                      (v['photoPath'] as String).isNotEmpty &&
+                                      File(v['photoPath'] as String).existsSync())
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.file(
+                                        File(v['photoPath'] as String),
+                                        height: 120,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                  if (v['desc'] != null &&
+                                      (v['desc'] as String).isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 6),
+                                      child: Text(
+                                        '📝 ${v['desc']}',
+                                        style: const TextStyle(
+                                            fontStyle: FontStyle.italic,
+                                            color: Colors.black87),
+                                      ),
+                                    ),
+                                  Text(
+                                    '⏰ ${_formatTimestamp(v['timestamp'])}',
+                                    style: const TextStyle(
+                                        fontSize: 11, color: Colors.grey),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Divider(),
+                                ],
+                              ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -237,425 +626,599 @@ class _ParkirFullScreenState extends State<ParkirFullScreen> {
     );
   }
 
-  // --- SLOT GRID ---
-  Widget _buildSlotGrid(Map<String, dynamic> area) {
-    final slots = area['slots'] as List<dynamic>;
-    final screenWidth = MediaQuery.of(context).size.width;
-    final crossAxisCount = screenWidth < 600 ? 2 : 3;
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: slots.length,
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-        childAspectRatio: screenWidth < 350 ? 1.1 : 1.5,
-      ),
-      itemBuilder: (ctx, i) {
-        final slot = slots[i] as Map<String, dynamic>;
-        final bool isAvailable = (slot['status'] as String?) == 'Tersedia';
-        return TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: 1),
-          duration: Duration(milliseconds: 300 + (i * 50)),
-          builder: (_, value, child) => Opacity(
-            opacity: value,
-            child: Transform.translate(
-              offset: Offset(0, 20 * (1 - value)),
-              child: child,
-            ),
-          ),
-          child: GestureDetector(
-            onTap: () => _showSlotInfo(slot),
-            child: Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              color: isAvailable ? Colors.green.shade50 : Colors.red.shade50,
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      isAvailable
-                          ? Icons.local_parking
-                          : Icons.car_repair,
-                      color: isAvailable ? Colors.green : Colors.red,
-                      size: 30,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(slot['name'] ?? '',
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                    Text(slot['status'] ?? '',
-                        style: TextStyle(
-                            color: isAvailable
-                                ? Colors.green
-                                : Colors.red)),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
+  String _formatTimestamp(Object? ts) {
+    try {
+      if (ts is DateTime) {
+        final t = ts;
+        return '${t.year}-${_two(t.month)}-${_two(t.day)} ${_two(t.hour)}:${_two(t.minute)}';
+      }
+      return ts?.toString() ?? '';
+    } catch (_) {
+      return ts?.toString() ?? '';
+    }
   }
 
-  // --- INFO SLOT ---
-  void _showSlotInfo(Map<String, dynamic> slot) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(12))),
-      builder: (ctx) => AnimatedOpacity(
-        duration: const Duration(milliseconds: 400),
-        opacity: 1,
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Informasi Slot ${slot['name']}',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 16)),
-                  const SizedBox(height: 8),
-                  if (slot['photo'] != null)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.file(slot['photo'] as File,
-                          height: 160,
-                          width: double.infinity,
-                          fit: BoxFit.cover),
-                    ),
-                  const SizedBox(height: 8),
-                  Text('Status: ${slot['status'] ?? '-'}'),
-                  const SizedBox(height: 6),
-                  Text('Deskripsi: ${slot['desc'] ?? '-'}'),
-                  const SizedBox(height: 12),
-                  Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: const Text('Tutup'))),
-                ]),
-          ),
-        ),
-      ),
-    );
-  }
+  String _two(int n) => n.toString().padLeft(2, '0');
+}
 
-  // --- AREA CARD ---
-  Widget _buildAreaCard(int index) {
-    final area = _areas[index];
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: Duration(milliseconds: 400 + (index * 120)),
-      curve: Curves.easeOutCubic,
-      builder: (_, value, child) => Opacity(
-        opacity: value,
-        child: Transform.translate(
-          offset: Offset(0, 20 * (1 - value)),
-          child: child,
-        ),
-      ),
-      child: Card(
-        margin: const EdgeInsets.symmetric(vertical: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 3,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              CircleAvatar(
-                  backgroundColor: const Color(0xFF1976D2),
-                  child: Text(area['id'],
-                      style: const TextStyle(color: Colors.white))),
-              const SizedBox(width: 8),
-              Expanded(
-                  child: Text(area['name'],
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold))),
-              IconButton(
-                  onPressed: () => _openMapModal(area['name']),
-                  icon: const Icon(Icons.map_outlined,
-                      color: Color(0xFF1976D2))),
-              IconButton(
-                  onPressed: () => _showServicesModal(
-                      area['name'], List<String>.from(area['services'])),
-                  icon: const Icon(Icons.room_service,
-                      color: Colors.deepPurple)),
-              IconButton(
-                  onPressed: () => _openCommunityScreen(index),
-                  icon: const Icon(Icons.people, color: Color(0xFF1976D2))),
-            ]),
-            const SizedBox(height: 10),
-            _buildSlotGrid(area),
-            const SizedBox(height: 10),
-            Center(
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1976D2),
-                    foregroundColor: Colors.white),
-                onPressed: () => _openAddSlotModal(index),
-                icon: const Icon(Icons.add),
-                label: const Text('Tambah Slot Parkir'),
-              ),
-            ),
-          ]),
-        ),
-      ),
-    );
-  }
+/// =============================
+///  WIDGET: Usage Bar Chart (green -> blue so different from header)
+/// =============================
+class UsageBarChart extends StatelessWidget {
+  final int used;
+  final int capacity;
+
+  const UsageBarChart({
+    super.key,
+    required this.used,
+    required this.capacity,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Area Parkir Kampus',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
+    final double usagePercent =
+        capacity == 0 ? 0 : (used / capacity).clamp(0.0, 1.0).toDouble();
+    final fullWidth = MediaQuery.of(context).size.width - 64; // approx padding compensation
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Stack(
+          children: [
+            Container(
+              height: 14,
+              decoration: BoxDecoration(
+                color: _lightGray,
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            Container(
+              height: 14,
+              width: fullWidth * usagePercent,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xFF43A047), // green
+                    Color(0xFF64B5F6), // light blue
+                  ],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ],
         ),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        automaticallyImplyLeading: false,
-      ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(12),
-        itemCount: _areas.length,
-        itemBuilder: (ctx, i) => _buildAreaCard(i),
-      ),
+        const SizedBox(height: 6),
+        Text(
+          "$used / $capacity slot terpakai",
+          style: const TextStyle(
+              fontSize: 13, color: Colors.black54, fontWeight: FontWeight.w500),
+        ),
+      ],
     );
   }
-
-  // --- KOMUNITAS ---
-  void _openCommunityScreen(int index) {
-    Navigator.push(
-      context,
-      _fadeRoute(CommunityScreen(
-        areaName: _areas[index]['name'],
-        posts: _areas[index]['posts'],
-      )),
-    ).then((posts) {
-      if (posts != null) {
-        setState(() => _areas[index]['posts'] = posts);
-      }
-    });
-  }
 }
 
-// --- KOMUNITAS SCREEN ---
-class CommunityScreen extends StatefulWidget {
-  final String areaName;
-  final List<Map<String, dynamic>> posts;
-  const CommunityScreen({super.key, required this.areaName, required this.posts});
+/// ---------- TAMBAH SLOT PAGE ----------
+class TambahSlotPage extends StatefulWidget {
+  final Map<String, dynamic> area;
+  final ImagePicker picker;
+  final Function(Map<String, dynamic>) onValidate;
+  final VoidCallback onUpdate;
+  final String? preselectedSlot;
+
+  const TambahSlotPage({
+    super.key,
+    required this.area,
+    required this.picker,
+    required this.onValidate,
+    required this.onUpdate,
+    this.preselectedSlot,
+  });
 
   @override
-  State<CommunityScreen> createState() => _CommunityScreenState();
+  State<TambahSlotPage> createState() => _TambahSlotPageState();
 }
 
-class _CommunityScreenState extends State<CommunityScreen> {
-  final ImagePicker _picker = ImagePicker();
-  late List<Map<String, dynamic>> posts;
+class _TambahSlotPageState extends State<TambahSlotPage> {
+  String? _selectedSlot;
+  // ignore: unused_field, prefer_final_fields
+  String _selectedStatus = 'Tersedia';
+  final TextEditingController _descController = TextEditingController();
+  File? _photo;
 
   @override
   void initState() {
     super.initState();
-    posts = List<Map<String, dynamic>>.from(widget.posts);
+    _selectedSlot = widget.preselectedSlot; // auto isi jika dikirim dari detail
   }
 
-  Future<void> _createPostWithCamera() async {
-    final XFile? photo =
-        await _picker.pickImage(source: ImageSource.camera, imageQuality: 80);
-    if (photo == null) return;
-    final caption = TextEditingController();
+  Future<void> _pickCamera() async {
+    final XFile? photo = await widget.picker.pickImage(
+        source: ImageSource.camera, imageQuality: 80);
+    if (photo != null) {
+      setState(() {
+        _photo = File(photo.path);
+      });
+    }
+  }
 
-    final posted = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (ctx) {
-        return Padding(
-          padding:
-              EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const Text('Buat Postingan',
-                    style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 12),
-                ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.file(File(photo.path),
-                        height: 180,
-                        width: double.infinity,
-                        fit: BoxFit.cover)),
-                const SizedBox(height: 12),
-                TextField(
-                    controller: caption,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        labelText: 'Keterangan (opsional)')),
-                const SizedBox(height: 12),
-                Row(children: [
-                  Expanded(
-                      child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF1976D2)),
-                          onPressed: () => Navigator.pop(ctx, true),
-                          child: const Text('Posting',
-                              style: TextStyle(color: Colors.white)))),
-                  const SizedBox(width: 12),
-                  OutlinedButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: const Text('Batal')),
-                ])
-              ]),
+  void _onSave() {
+    if (_selectedSlot == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Pilih slot terlebih dahulu!'),
+          backgroundColor: Colors.redAccent));
+      return;
+    }
+
+    final slots = widget.area['slots'] as List;
+    final existing = slots.where((s) => s['name'] == _selectedSlot).toList();
+
+    if (existing.isNotEmpty &&
+        existing.first['status'].toString() == 'Terisi') {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('❌ Slot ini sedang terisi.'),
+          backgroundColor: Colors.redAccent));
+      return;
+    }
+
+    final validation = {
+      'slot': _selectedSlot,
+      'photoPath': _photo?.path,
+      'desc': _descController.text.trim(),
+      'timestamp': DateTime.now(),
+    };
+
+    widget.onValidate(validation);
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('✅ Validasi parkir berhasil disimpan.'),
+        backgroundColor: Colors.green));
+    widget.onUpdate();
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final areaName = widget.area['name'] ?? '';
+    return Scaffold(
+      backgroundColor: _backgroundColor,
+      appBar: AppBar(
+        backgroundColor: _backgroundColor,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+        title: Text(
+          widget.preselectedSlot != null
+              ? 'Validasi ${widget.preselectedSlot}'
+              : 'Tambah/Validasi Slot - $areaName',
+          style: const TextStyle(color: Colors.black),
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          if (widget.preselectedSlot == null) ...[
+            const Text('Pilih Slot:',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: _selectedSlot,
+              decoration: InputDecoration(
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                filled: true,
+                fillColor: Colors.white,
+              ),
+              items: (widget.area['slots'] as List)
+                  .map((s) => DropdownMenuItem<String>(
+                      value: s['name'], child: Text(s['name'])))
+                  .toList(),
+              onChanged: (v) => setState(() => _selectedSlot = v),
             ),
+            const SizedBox(height: 12),
+          ],
+          const Text('📸 Foto Validasi:',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Row(children: [
+            ElevatedButton.icon(
+                onPressed: _pickCamera,
+                icon: const Icon(Icons.camera_alt),
+                label: const Text('Ambil Foto'),
+                style:
+                    ElevatedButton.styleFrom(backgroundColor: _primaryColor)),
+            const SizedBox(width: 12),
+            if (_photo != null)
+              Expanded(
+                child: Stack(children: [
+                  ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(_photo!,
+                          height: 80, fit: BoxFit.cover, width: double.infinity)),
+                  Positioned(
+                      right: 4,
+                      top: 4,
+                      child: InkWell(
+                          onTap: () => setState(() => _photo = null),
+                          child: const CircleAvatar(
+                              radius: 12,
+                              backgroundColor: Colors.black54,
+                              child:
+                                  Icon(Icons.close, size: 14, color: Colors.white))))
+                ]),
+              ),
+          ]),
+          const SizedBox(height: 16),
+          const Text('📝 Deskripsi Pengguna:',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 6),
+          TextField(
+            controller: _descController,
+            decoration: InputDecoration(
+              hintText: 'Tulis keterangan kondisi slot...',
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              filled: true,
+              fillColor: Colors.white,
+            ),
+            maxLines: 3,
           ),
-        );
-      },
+          const SizedBox(height: 18),
+          ElevatedButton(
+            onPressed: _onSave,
+            style: ElevatedButton.styleFrom(
+                backgroundColor: _primaryColor,
+                minimumSize: const Size.fromHeight(48)),
+            child: const Text('Simpan Validasi'),
+          ),
+        ]),
+      ),
     );
+  }
+}
 
-    if (posted != true) return;
+/// ---------- KOMUNITAS PAGE ----------
+class KomunitasPage extends StatefulWidget {
+  final Map<String, dynamic> area;
+  final ImagePicker picker;
 
+  const KomunitasPage({super.key, required this.area, required this.picker});
+
+  @override
+  State<KomunitasPage> createState() => _KomunitasPageState();
+}
+
+class _KomunitasPageState extends State<KomunitasPage> {
+  final TextEditingController _postController = TextEditingController();
+  final List<Map<String, dynamic>> _posts = [];
+  File? _pickedImage;
+
+  void _addPost({required String text, File? image}) {
+    if (text.isEmpty && image == null) return;
     setState(() {
-      posts.insert(0, {
-        'user': 'Saya',
-        'text': caption.text.trim(),
-        'photo': File(photo.path),
+      _posts.insert(0, {
+        'id': DateTime.now().millisecondsSinceEpoch.toString(),
+        'text': text,
+        'image': image,
         'likes': 0,
         'dislikes': 0,
-        'createdAt': DateTime.now(),
+        'replies': <Map<String, dynamic>>[],
+        'timestamp': DateTime.now(),
       });
+      _postController.clear();
+      _pickedImage = null;
     });
   }
 
-  String _friendlyTime(DateTime dt) {
-    final diff = DateTime.now().difference(dt);
-    if (diff.inSeconds < 60) return 'Baru saja';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
-    if (diff.inHours < 24) return '${diff.inHours}j';
-    return '${diff.inDays}h';
+  Future<void> _pickCamera() async {
+    final XFile? photo = await widget.picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 80,
+    );
+    if (photo != null) {
+      setState(() {
+        _pickedImage = File(photo.path);
+      });
+    }
+  }
+
+  String _timeAgo(DateTime time) {
+    final diff = DateTime.now().difference(time);
+    if (diff.inMinutes < 1) return "Baru saja";
+    if (diff.inMinutes < 60) return "${diff.inMinutes} menit lalu";
+    if (diff.inHours < 24) return "${diff.inHours} jam lalu";
+    return "${diff.inDays} hari lalu";
+  }
+
+  void _toggleLike(Map<String, dynamic> post, bool isLike) {
+    setState(() {
+      if (isLike) {
+        post['likes'] = (post['likes'] as int) + 1;
+      } else {
+        post['dislikes'] = (post['dislikes'] as int) + 1;
+      }
+    });
+  }
+
+  void _deletePost(String id) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Postingan'),
+        content: const Text('Yakin ingin menghapus postingan ini?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Batal')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () {
+              setState(() => _posts.removeWhere((p) => p['id'] == id));
+              Navigator.pop(ctx);
+            },
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showReplyDialog(Map<String, dynamic> post) {
+    final TextEditingController replyController = TextEditingController();
+    File? replyImage;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Balas Komentar'),
+            content: SingleChildScrollView(
+              child: Column(
+                children: [
+                  TextField(
+                    controller: replyController,
+                    decoration:
+                        const InputDecoration(hintText: 'Tulis balasan...'),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 8),
+                  if (replyImage != null)
+                    Stack(children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.file(replyImage!, height: 120, fit: BoxFit.cover),
+                      ),
+                      Positioned(
+                        right: 4,
+                        top: 4,
+                        child: InkWell(
+                          onTap: () => setState(() => replyImage = null),
+                          child: const CircleAvatar(
+                            radius: 14,
+                            backgroundColor: Colors.black54,
+                            child: Icon(Icons.close, size: 16, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ]),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: () async {
+                      final XFile? photo =
+                          await widget.picker.pickImage(source: ImageSource.camera);
+                      if (photo != null) {
+                        setState(() => replyImage = File(photo.path));
+                      }
+                    },
+                    icon: const Icon(Icons.camera_alt),
+                    label: const Text('Upload Foto'),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Batal')),
+              ElevatedButton(
+                onPressed: () {
+                  if (replyController.text.isNotEmpty || replyImage != null) {
+                    setState(() {
+                      post['replies'].add({
+                        'id': DateTime.now().millisecondsSinceEpoch.toString(),
+                        'text': replyController.text,
+                        'image': replyImage,
+                        'likes': 0,
+                        'dislikes': 0,
+                        'replies': [],
+                        'timestamp': DateTime.now(),
+                      });
+                    });
+                    Navigator.pop(ctx);
+                  }
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: _primaryColor),
+                child: const Text('Kirim'),
+              ),
+            ],
+          );
+        });
+      },
+    );
+  }
+
+  Widget _buildReplies(List replies, int depth) {
+    if (replies.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: EdgeInsets.only(left: 22.0 * depth),
+      child: Column(
+        children: replies
+            .map<Widget>((r) => _buildPostCard(r, isReply: true, depth: depth))
+            .toList(),
+      ),
+    );
+  }
+
+  Widget _buildPostCard(Map<String, dynamic> post,
+      {bool isReply = false, int depth = 0}) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const CircleAvatar(
+              backgroundColor: _primaryColor,
+              radius: 18,
+              child: Icon(Icons.person, color: Colors.white),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text('User ${post['id'].substring(post['id'].length - 4)}',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 14)),
+            ),
+            Text(_timeAgo(post['timestamp']),
+                style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            IconButton(
+              onPressed: () => _deletePost(post['id']),
+              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+            ),
+          ]),
+          const SizedBox(height: 8),
+          if (post['text'] != null && post['text'] != "")
+            Text(post['text'], style: const TextStyle(fontSize: 14)),
+          if (post['image'] != null) ...[
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.file(
+                post['image'],
+                height: 150,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Row(children: [
+            IconButton(
+                onPressed: () => _toggleLike(post, true),
+                icon: const Icon(Icons.thumb_up_alt_outlined),
+                color: _accentColor),
+            Text("${post['likes']}"),
+            const SizedBox(width: 16),
+            IconButton(
+                onPressed: () => _toggleLike(post, false),
+                icon: const Icon(Icons.thumb_down_alt_outlined),
+                color: Colors.redAccent),
+            Text("${post['dislikes']}"),
+            const Spacer(),
+            TextButton.icon(
+              onPressed: () => _showReplyDialog(post),
+              icon: const Icon(Icons.reply, size: 18),
+              label: const Text('Balas'),
+            ),
+          ]),
+          if (post['replies'] != null && post['replies'].isNotEmpty)
+            _buildReplies(post['replies'], depth + 1),
+        ]),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _backgroundColor,
       appBar: AppBar(
-        title: Text('Komunitas - ${widget.areaName}'),
-        backgroundColor: const Color(0xFF1976D2),
-        foregroundColor: Colors.white,
+        backgroundColor: _backgroundColor,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+        title: Text('Komunitas - ${widget.area['name']}',
+            style: const TextStyle(color: Colors.black)),
+        centerTitle: true,
       ),
-      body: posts.isEmpty
-          ? Center(
-              child: Text('Belum ada postingan',
-                  style: TextStyle(color: Colors.grey.shade600)))
-          : ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: posts.length,
-              itemBuilder: (ctx, i) {
-                final post = posts[i];
-                return TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: 1),
-                  duration: Duration(milliseconds: 400 + (i * 80)),
-                  builder: (_, value, child) => Opacity(
-                    opacity: value,
-                    child: Transform.translate(
-                        offset: Offset(0, 20 * (1 - value)), child: child),
+      body: Column(children: [
+        Expanded(
+          child: _posts.isEmpty
+              ? const Center(
+                  child: Text(
+                    'Belum ada postingan.\nTulis sesuatu untuk memulai!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey),
                   ),
-                  child: Card(
-                    margin: const EdgeInsets.symmetric(vertical: 8),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    elevation: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(children: [
-                              const CircleAvatar(
-                                  radius: 18,
-                                  backgroundColor: Color(0xFF1976D2),
-                                  child: Icon(Icons.person,
-                                      color: Colors.white, size: 18)),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                  child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                    Text(post['user'] ?? 'Anonim',
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.bold)),
-                                    Text(_friendlyTime(
-                                        post['createdAt'] ?? DateTime.now()),
-                                        style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey.shade600)),
-                                  ])),
-                            ]),
-                            const SizedBox(height: 10),
-                            if (post['photo'] != null)
-                              ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.file(post['photo'] as File,
-                                      width: double.infinity,
-                                      fit: BoxFit.cover)),
-                            if ((post['text'] ?? '').isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              Text(post['text']),
-                            ],
-                            const SizedBox(height: 8),
-                            Row(children: [
-                              IconButton(
-                                  onPressed: () => setState(
-                                      () => post['likes'] = post['likes'] + 1),
-                                  icon: const Icon(Icons.thumb_up_alt_outlined,
-                                      size: 20, color: Colors.green)),
-                              Text('${post['likes']}'),
-                              const SizedBox(width: 16),
-                              IconButton(
-                                  onPressed: () => setState(() =>
-                                      post['dislikes'] =
-                                          post['dislikes'] + 1),
-                                  icon: const Icon(Icons.thumb_down_alt_outlined,
-                                      size: 20, color: Colors.red)),
-                              Text('${post['dislikes']}'),
-                            ]),
-                          ]),
-                    ),
-                  ),
-                );
-              },
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: _posts.length,
+                  itemBuilder: (context, index) {
+                    final post = _posts[index];
+                    return _buildPostCard(post);
+                  },
+                ),
+        ),
+        const Divider(height: 0),
+        Container(
+          color: Colors.white,
+          padding: const EdgeInsets.all(12),
+          child: Row(children: [
+            IconButton(
+              onPressed: _pickCamera,
+              icon: const Icon(Icons.camera_alt),
+              color: _primaryColor,
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _createPostWithCamera,
-        label: const Text('Posting'),
-        icon: const Icon(Icons.add_a_photo),
-        backgroundColor: const Color(0xFF1976D2),
-        foregroundColor: Colors.white,
-      ),
+            Expanded(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                TextField(
+                  controller: _postController,
+                  decoration: const InputDecoration(
+                      hintText: 'Tulis sesuatu...', border: InputBorder.none),
+                ),
+                if (_pickedImage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Stack(children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.file(
+                          _pickedImage!,
+                          height: 100,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                        ),
+                      ),
+                      Positioned(
+                        right: 6,
+                        top: 6,
+                        child: InkWell(
+                          onTap: () => setState(() => _pickedImage = null),
+                          child: const CircleAvatar(
+                            radius: 14,
+                            backgroundColor: Colors.black54,
+                            child: Icon(Icons.close, size: 16, color: Colors.white),
+                          ),
+                        ),
+                      )
+                    ]),
+                  ),
+              ]),
+            ),
+            IconButton(
+              onPressed: () {
+                if (_postController.text.isNotEmpty || _pickedImage != null) {
+                  _addPost(text: _postController.text, image: _pickedImage);
+                }
+              },
+              icon: const Icon(Icons.send),
+              color: _primaryColor,
+            ),
+          ]),
+        ),
+      ]),
     );
-  }
-
-  @override
-  void dispose() {
-    Navigator.pop(context, posts);
-    super.dispose();
   }
 }

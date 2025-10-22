@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'routes/app_routes.dart';
-import 'theme/app_theme.dart';
+
 
 // import semua screen yang digunakan
 import 'screens/splash_screen.dart';
@@ -16,21 +15,9 @@ import 'screens/reward_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/parkir_screen.dart';
 import 'screens/info_screen.dart';
-import 'screens/camera_screen.dart';
-import 'screens/verify_otp_screen.dart';
+import 'screens/camera_screen.dart'; // ✅ jika kamu punya kamera
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // 🔧 Atur orientasi & status bar biar clean
-  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent, // transparan
-      statusBarIconBrightness: Brightness.light,
-    ),
-  );
-
+void main() {
   runApp(const PoliSlotApp());
 }
 
@@ -39,19 +26,58 @@ class PoliSlotApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const Color _primaryColor = Color(0xFF1976D2);
+    const Color _secondaryColor = Color(0xFF2196F3);
+
     return MaterialApp(
       title: 'PoliSlot',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        fontFamily: 'Poppins',
-        colorSchemeSeed: AppTheme.primaryLight,
+        fontFamily: 'Roboto',
+        scaffoldBackgroundColor: Colors.white,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: _primaryColor,
+          primary: _primaryColor,
+          secondary: _secondaryColor,
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: _primaryColor,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: true,
+          titleTextStyle: TextStyle(
+            fontFamily: 'Roboto',
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            color: Colors.white,
+          ),
+        ),
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: _primaryColor,
+          foregroundColor: Colors.white,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _primaryColor,
+            foregroundColor: Colors.white,
+            textStyle: const TextStyle(
+              fontFamily: 'Roboto',
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(12)),
+            ),
+            elevation: 2,
+          ),
+        ),
       ),
 
-      // ✅ Halaman pertama
+      // ✅ halaman pertama yang muncul
       initialRoute: AppRoutes.splash,
 
-      // ✅ Semua route di app
+      // ✅ daftar route sesuai AppRoutes
       routes: {
         AppRoutes.splash: (_) => const SplashScreen(),
         AppRoutes.loginRegis: (_) => const LoginRegisScreen(),
@@ -63,10 +89,9 @@ class PoliSlotApp extends StatelessWidget {
         AppRoutes.mission: (_) => const MissionScreen(),
         AppRoutes.reward: (_) => const RewardScreen(),
         AppRoutes.profile: (_) => const ProfileScreen(),
-        AppRoutes.parkir: (_) => const ParkirFullScreen(),
+        AppRoutes.parkir: (_) => const AreaParkirScreen(),
         AppRoutes.info: (_) => const InfoScreen(),
-        AppRoutes.verifyOtp: (context) => VerifyOtpScreen(),
-        '/camera': (_) => const CameraScreen(),
+        '/camera': (_) => const CameraScreen(), // optional kamera
       },
     );
   }

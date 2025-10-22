@@ -14,7 +14,7 @@ class RewardScreen extends StatefulWidget {
 class _RewardScreenState extends State<RewardScreen> {
   late ConfettiController _confettiController;
   bool isTokoSelected = true;
-  final Color primaryBlue = const Color(0xFF1352C8);
+  final Color primaryBlue = const Color(0xFF1565C0);
   int totalKoin = 480;
 
   final List<Map<String, dynamic>> _rewards = [
@@ -81,7 +81,7 @@ class _RewardScreenState extends State<RewardScreen> {
     super.dispose();
   }
 
-  // --- Fade muncul lembut tiap card ---
+  // --- Fade tiap card muncul lembut ---
   Widget _fadeInCard({required int index, required Widget child}) {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
@@ -125,8 +125,9 @@ class _RewardScreenState extends State<RewardScreen> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-                backgroundColor: primaryBlue,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+              backgroundColor: const Color(0xFF1565C0),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
             onPressed: () {
               Navigator.pop(context);
               _confettiController.play();
@@ -207,7 +208,7 @@ class _RewardScreenState extends State<RewardScreen> {
   Widget build(BuildContext context) {
     return Stack(children: [
       Scaffold(
-        backgroundColor: const Color(0xFFE9EEF6),
+        backgroundColor: const Color(0xFFF3F6FB),
         appBar: AppBar(
           backgroundColor: Colors.white,
           elevation: 0,
@@ -254,10 +255,11 @@ class _RewardScreenState extends State<RewardScreen> {
   Widget _headerCard() => Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-              colors: [primaryBlue, primaryBlue.withOpacity(0.8)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF1565C0), Color(0xFF2196F3)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
           borderRadius: BorderRadius.circular(14),
           boxShadow: const [
             BoxShadow(color: Color(0x22000000), blurRadius: 8, offset: Offset(0, 4))
@@ -266,8 +268,8 @@ class _RewardScreenState extends State<RewardScreen> {
         child: Row(children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: const BoxDecoration(
-              color: Colors.greenAccent,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.attach_money, color: Colors.white, size: 26),
@@ -318,7 +320,13 @@ class _RewardScreenState extends State<RewardScreen> {
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 250),
             decoration: BoxDecoration(
-              color: active ? primaryBlue : Colors.white,
+              gradient: active
+                  ? const LinearGradient(
+                      colors: [Color(0xFF1565C0), Color(0xFF2196F3)],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight)
+                  : null,
+              color: active ? null : Colors.white,
               borderRadius: BorderRadius.circular(25),
             ),
             child: Center(
@@ -373,14 +381,15 @@ class _RewardScreenState extends State<RewardScreen> {
                       const SizedBox(height: 8),
                       Text("${item['poin']} Koin",
                           style: const TextStyle(
-                              color: Colors.green, fontWeight: FontWeight.w600)),
+                              color: Color(0xFF1352C8), fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ),
                 ElevatedButton(
                   onPressed: bisaTukar ? () => _showRedeemDialog(item) : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: bisaTukar ? primaryBlue : Colors.grey.shade400,
+                    backgroundColor:
+                        bisaTukar ? const Color(0xFF1565C0) : Colors.grey.shade400,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   child: const Text("Tukar", style: TextStyle(color: Colors.white)),
@@ -417,7 +426,7 @@ class _RewardScreenState extends State<RewardScreen> {
               break;
             default:
               icon = FontAwesomeIcons.clockRotateLeft;
-              iconColor = Colors.blueAccent;
+              iconColor = const Color(0xFF2196F3);
           }
 
           return _fadeInCard(

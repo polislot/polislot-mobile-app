@@ -3,8 +3,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../routes/api_service.dart'; // Import ApiService dari folder routes
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -17,15 +15,11 @@ class _ProfileScreenState extends State<ProfileScreen>
     with TickerProviderStateMixin {
   int _sectionIndex = 0;
   File? _selectedImage;
-  bool _isLoading = false;
 
-  // Data user dari session
-  String _userName = "Loading...";
-  String _userEmail = "Loading...";
-  String? _accessToken;
-
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController =
+      TextEditingController(text: "yani123@gmail.com");
+  final TextEditingController _nameController =
+      TextEditingController(text: "Andri Yani Meuraxa");
   final TextEditingController _passController = TextEditingController();
   final TextEditingController _confirmPassController = TextEditingController();
   final TextEditingController _judulCtrl = TextEditingController();
@@ -52,8 +46,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   void initState() {
     super.initState();
-    _loadUserData();
-    
     _menuAnimCtrl =
         AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
 
@@ -81,29 +73,9 @@ class _ProfileScreenState extends State<ProfileScreen>
     _menuAnimCtrl.forward();
   }
 
-  // Load user data dari SharedPreferences
-  Future<void> _loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _userName = prefs.getString('user_name') ?? 'User';
-      _userEmail = prefs.getString('user_email') ?? 'user@email.com';
-      _accessToken = prefs.getString('access_token');
-      
-      // Set controller values
-      _nameController.text = _userName;
-      _emailController.text = _userEmail;
-    });
-  }
-
   @override
   void dispose() {
     _menuAnimCtrl.dispose();
-    _emailController.dispose();
-    _nameController.dispose();
-    _passController.dispose();
-    _confirmPassController.dispose();
-    _judulCtrl.dispose();
-    _deskripsiCtrl.dispose();
     super.dispose();
   }
 
@@ -114,141 +86,68 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (picked != null) setState(() => _selectedImage = File(picked.path));
   }
 
-  // Fungsi logout dengan API
-  Future<void> _performLogout() async {
-    if (_accessToken == null) {
-      _showErrorSnackBar('Token tidak ditemukan. Silakan login ulang.');
-      _navigateToLogin();
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      final result = await ApiService.logout(_accessToken!);
-      
-      if (result['statusCode'] == 200) {
-        // Hapus data session
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.clear();
-        
-        // Tutup dialog
-        if (mounted) Navigator.pop(context);
-        
-        // Navigasi ke login
-        _navigateToLogin();
-        
-        // Show success message
-        _showSuccessSnackBar('Logout berhasil');
-      } else {
-        _showErrorSnackBar(result['body']['message'] ?? 'Logout gagal');
-      }
-    } catch (e) {
-      _showErrorSnackBar('Error: $e');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  void _navigateToLogin() {
-    // Ganti dengan route ke halaman login Anda
-    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-    // Atau jika menggunakan MaterialPageRoute:
-    // Navigator.pushAndRemoveUntil(
-    //   context,
-    //   MaterialPageRoute(builder: (_) => const LoginScreen()),
-    //   (route) => false,
-    // );
-  }
-
-  void _showErrorSnackBar(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _showSuccessSnackBar(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
   void _showLogoutDialog() {
     showDialog(
       context: context,
-      barrierDismissible: !_isLoading,
-      builder: (context) => WillPopScope(
-        onWillPop: () async => !_isLoading,
-        child: Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          backgroundColor: const Color(0xFFEEF3FF),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.warning_amber_rounded,
-                    color: Color(0xFF0A4AE1), size: 50),
-                const SizedBox(height: 10),
-                const Text("Konfirmasi Logout",
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0A3D91),
-                        fontSize: 18)),
-                const SizedBox(height: 10),
-                const Text(
-                  "Apakah Anda yakin ingin keluar dari akun Anda?",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.black87),
-                ),
-                const SizedBox(height: 24),
-                if (_isLoading)
-                  const CircularProgressIndicator()
-                else
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey[300],
-                            foregroundColor: Colors.black87,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
-                            minimumSize: const Size(110, 44)),
-                        child: const Text("Batal"),
-                      ),
-                      ElevatedButton(
-                        onPressed: _performLogout,
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0A4AE1),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
-                            minimumSize: const Size(110, 44)),
-                        child: const Text("Ya, Keluar"),
-                      ),
-                    ],
-                  )
-              ],
-            ),
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: const Color(0xFFF3F6FB),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.warning_amber_rounded,
+                  color: Color(0xFF1565C0), size: 50),
+              const SizedBox(height: 10),
+              const Text("Konfirmasi Logout",
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1565C0),
+                      fontSize: 18)),
+              const SizedBox(height: 10),
+              const Text(
+                "Apakah Anda yakin ingin keluar dari akun Anda?",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.black87),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFF1565C0), width: 1.5),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      minimumSize: const Size(110, 44),
+                    ),
+                    child: const Text("Batal",
+                        style: TextStyle(color: Color(0xFF1565C0), fontWeight: FontWeight.bold)),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Logout berhasil")));
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1565C0),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      minimumSize: const Size(110, 44),
+                    ),
+                    child: const Text("Ya, Keluar"),
+                  ),
+                ],
+              )
+            ],
           ),
         ),
       ),
     );
   }
 
-  // ================= BUILD =================
   @override
   Widget build(BuildContext context) {
     Widget body;
@@ -264,10 +163,20 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFEAF3FF),
+      backgroundColor: const Color(0xFFF3F6FB),
       appBar: AppBar(
-        backgroundColor:
-            _sectionIndex == 0 ? Colors.white : const Color(0xFF0A4AE1),
+        flexibleSpace: _sectionIndex != 0
+            ? Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF1565C0), Color(0xFF2196F3)],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                ),
+              )
+            : null,
+        backgroundColor: _sectionIndex == 0 ? Colors.white : null,
         elevation: 2,
         centerTitle: true,
         automaticallyImplyLeading: _sectionIndex != 0,
@@ -294,7 +203,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // ================= MAIN PROFILE =================
   Widget _buildMainProfile() {
     final menuItems = [
       ("Ubah Profil", Icons.edit, Colors.blue, () => _changeSection(1)),
@@ -316,40 +224,44 @@ class _ProfileScreenState extends State<ProfileScreen>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1565C0), Color(0xFF2196F3)],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [
+              boxShadow: const [
                 BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Color(0x22000000),
                     blurRadius: 8,
-                    offset: const Offset(0, 3))
+                    offset: Offset(0, 4))
               ],
             ),
             child: Row(
               children: [
                 CircleAvatar(
                   radius: 36,
-                  backgroundColor: const Color(0xFFDDEEFF),
+                  backgroundColor: Colors.white.withOpacity(0.3),
                   backgroundImage:
                       _selectedImage != null ? FileImage(_selectedImage!) : null,
                   child: _selectedImage == null
                       ? const Icon(Icons.person,
-                          size: 40, color: Color(0xFF0A3D91))
+                          size: 40, color: Colors.white)
                       : null,
                 ),
                 const SizedBox(width: 14),
-                Expanded(
+                const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(_userName,
-                          style: const TextStyle(
+                      Text("Andri Yani Meuraxa",
+                          style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: Colors.black87)),
-                      const SizedBox(height: 4),
-                      Text(_userEmail,
-                          style: const TextStyle(color: Colors.black54)),
+                              color: Colors.white)),
+                      SizedBox(height: 4),
+                      Text("yani123@gmail.com",
+                          style: TextStyle(color: Colors.white70)),
                     ],
                   ),
                 ),
@@ -382,11 +294,9 @@ class _ProfileScreenState extends State<ProfileScreen>
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          boxShadow: [
+          boxShadow: const [
             BoxShadow(
-                color: Colors.black.withOpacity(0.07),
-                blurRadius: 8,
-                offset: const Offset(0, 3))
+                color: Color(0x11000000), blurRadius: 8, offset: Offset(0, 3))
           ],
         ),
         child: Row(
@@ -415,7 +325,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // ================= EDIT PROFILE =================
   Widget _buildEditProfile() {
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -427,11 +336,11 @@ class _ProfileScreenState extends State<ProfileScreen>
             children: [
               CircleAvatar(
                 radius: 60,
-                backgroundColor: const Color(0xFFDDEEFF),
+                backgroundColor: const Color(0xFFEAF3FF),
                 backgroundImage:
                     _selectedImage != null ? FileImage(_selectedImage!) : null,
                 child: _selectedImage == null
-                    ? const Icon(Icons.person, size: 60, color: Color(0xFF0A3D91))
+                    ? const Icon(Icons.person, size: 60, color: Color(0xFF1565C0))
                     : null,
               ),
               GestureDetector(
@@ -439,7 +348,11 @@ class _ProfileScreenState extends State<ProfileScreen>
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0A4AE1),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF1565C0), Color(0xFF2196F3)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
                     borderRadius: BorderRadius.circular(30),
                   ),
                   child:
@@ -457,26 +370,17 @@ class _ProfileScreenState extends State<ProfileScreen>
             obscure: true),
         const SizedBox(height: 24),
         ElevatedButton(
-          onPressed: () async {
-            // TODO: Implement update profile API
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setString('user_name', _nameController.text);
-            await prefs.setString('user_email', _emailController.text);
-            
-            setState(() {
-              _userName = _nameController.text;
-              _userEmail = _emailController.text;
-            });
-            
-            _showSuccessSnackBar("Perubahan disimpan");
+          onPressed: () {
+            ScaffoldMessenger.of(context)
+                .showSnackBar(const SnackBar(content: Text("Perubahan disimpan")));
             _changeSection(0);
           },
           style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0A4AE1),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.symmetric(vertical: 14)),
+            backgroundColor: const Color(0xFF1565C0),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            padding: const EdgeInsets.symmetric(vertical: 14),
+          ),
           child: const Text("Simpan Perubahan",
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
@@ -484,14 +388,13 @@ class _ProfileScreenState extends State<ProfileScreen>
         OutlinedButton(
           onPressed: () => _changeSection(0),
           style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Color(0xFF0A4AE1), width: 1.5),
-              shape:
-                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              side: const BorderSide(color: Color(0xFF1565C0), width: 1.5),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               padding: const EdgeInsets.symmetric(vertical: 14)),
           child: const Text("Batal",
               style: TextStyle(
                   fontSize: 16,
-                  color: Color(0xFF0A4AE1),
+                  color: Color(0xFF1565C0),
                   fontWeight: FontWeight.bold)),
         ),
       ],
@@ -507,17 +410,17 @@ class _ProfileScreenState extends State<ProfileScreen>
         children: [
           Text(label,
               style: const TextStyle(
-                  color: Color(0xFF0A3D91), fontWeight: FontWeight.w500)),
+                  color: Color(0xFF1565C0), fontWeight: FontWeight.w500)),
           const SizedBox(height: 6),
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              boxShadow: [
+              boxShadow: const [
                 BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Color(0x11000000),
                     blurRadius: 6,
-                    offset: const Offset(0, 3))
+                    offset: Offset(0, 3))
               ],
             ),
             child: TextField(
@@ -535,7 +438,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // ================= MASUKAN PENGGUNA =================
   Widget _buildFeedbackForm() {
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -544,7 +446,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF0A3D91))),
+                color: Color(0xFF1565C0))),
         const SizedBox(height: 16),
         _dropdownField("Kategori", kategoriList, _selectedKategori,
             (val) => setState(() => _selectedKategori = val)),
@@ -555,12 +457,12 @@ class _ProfileScreenState extends State<ProfileScreen>
         const SizedBox(height: 20),
         ElevatedButton(
           onPressed: () {
-            // TODO: Implement submit feedback API
-            _showSuccessSnackBar("Masukan berhasil dikirim");
+            ScaffoldMessenger.of(context)
+                .showSnackBar(const SnackBar(content: Text("Masukan berhasil dikirim")));
             _changeSection(0);
           },
           style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0A4AE1),
+              backgroundColor: const Color(0xFF1565C0),
               foregroundColor: Colors.white,
               minimumSize: const Size.fromHeight(50),
               shape:
@@ -571,13 +473,13 @@ class _ProfileScreenState extends State<ProfileScreen>
         OutlinedButton(
           onPressed: () => _changeSection(0),
           style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Color(0xFF0A4AE1), width: 1.5),
+              side: const BorderSide(color: Color(0xFF1565C0), width: 1.5),
               shape:
                   RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               minimumSize: const Size.fromHeight(50)),
           child: const Text("Kembali",
               style: TextStyle(
-                  color: Color(0xFF0A4AE1), fontWeight: FontWeight.bold)),
+                  color: Color(0xFF1565C0), fontWeight: FontWeight.bold)),
         )
       ],
     );
@@ -592,18 +494,18 @@ class _ProfileScreenState extends State<ProfileScreen>
         children: [
           Text(label,
               style: const TextStyle(
-                  color: Color(0xFF0A3D91), fontWeight: FontWeight.w500)),
+                  color: Color(0xFF1565C0), fontWeight: FontWeight.w500)),
           const SizedBox(height: 6),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              boxShadow: [
+              boxShadow: const [
                 BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Color(0x11000000),
                     blurRadius: 6,
-                    offset: const Offset(0, 3))
+                    offset: Offset(0, 3))
               ],
             ),
             child: DropdownButtonHideUnderline(
@@ -633,8 +535,7 @@ class ProfileRewardScreen extends StatefulWidget {
   State<ProfileRewardScreen> createState() => _ProfileRewardScreenState();
 }
 
-class _ProfileRewardScreenState extends State<ProfileRewardScreen>
-    with TickerProviderStateMixin {
+class _ProfileRewardScreenState extends State<ProfileRewardScreen> {
   late final List<Map<String, dynamic>> rewards;
 
   @override
@@ -650,9 +551,14 @@ class _ProfileRewardScreenState extends State<ProfileRewardScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFEAF3FF),
+      backgroundColor: const Color(0xFFF3F6FB),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0A4AE1),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient:
+                LinearGradient(colors: [Color(0xFF1565C0), Color(0xFF2196F3)]),
+          ),
+        ),
         title: const Text("Riwayat Penukaran",
             style: TextStyle(
                 color: Colors.white, fontWeight: FontWeight.bold)),
@@ -669,11 +575,11 @@ class _ProfileRewardScreenState extends State<ProfileRewardScreen>
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(14),
-              boxShadow: [
+              boxShadow: const [
                 BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Color(0x11000000),
                     blurRadius: 8,
-                    offset: const Offset(0, 4))
+                    offset: Offset(0, 4))
               ],
             ),
             child: Row(
@@ -681,11 +587,11 @@ class _ProfileRewardScreenState extends State<ProfileRewardScreen>
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0A4AE1).withOpacity(0.15),
+                    color: const Color(0xFF1565C0).withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(r["icon"] as IconData,
-                      color: const Color(0xFF0A4AE1), size: 30),
+                      color: const Color(0xFF1565C0), size: 30),
                 ),
                 const SizedBox(width: 14),
                 Expanded(

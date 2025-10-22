@@ -13,7 +13,6 @@ import '../screens/parkir_screen.dart';
 import '../screens/info_screen.dart';
 import '../screens/verify_otp_screen.dart';
 
-
 class AppRoutes {
   static const splash = '/';
   static const loginRegis = '/loginRegis';
@@ -29,7 +28,6 @@ class AppRoutes {
   static const info = '/info';
   static const verifyOtp = '/verifyOtp';
 
-
   static Map<String, WidgetBuilder> routes = {
     splash: (context) => const SplashScreen(),
     loginRegis: (context) => const LoginRegisScreen(),
@@ -41,7 +39,7 @@ class AppRoutes {
     mission: (context) => const MissionScreen(),
     reward: (context) => const RewardScreen(),
     profile: (context) => const ProfileScreen(),
-    parkir: (context) => const ParkirFullScreen(),
+    parkir: (context) => const AreaParkirScreen(),
     info: (context) => const InfoScreen(),
     verifyOtp: (context) => const VerifyOtpScreen(),
   };
