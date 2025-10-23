@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
   // ✅ TAMBAHKAN PORT 8000
-  static const String baseUrl = "http://10.170.8.220:8000/api"; 
+  static const String baseUrl = "http://192.168.1.10:8080/api"; 
 
   // 🟢 REGISTER
   static Future<Map<String, dynamic>> register({
@@ -26,7 +26,7 @@ class ApiService {
           'password_confirmation': confirmPassword,
         }),
       ).timeout(
-        const Duration(seconds: 10),
+        const Duration(seconds: 20),
         onTimeout: () {
           throw Exception('Connection timeout');
         },

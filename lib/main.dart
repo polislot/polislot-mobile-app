@@ -15,7 +15,7 @@ import 'screens/reward_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/parkir_screen.dart';
 import 'screens/info_screen.dart';
-import 'screens/camera_screen.dart'; // ✅ jika kamu punya kamera
+import 'screens/verify_otp_screen.dart';
 
 void main() {
   runApp(const PoliSlotApp());
@@ -91,7 +91,7 @@ class PoliSlotApp extends StatelessWidget {
         AppRoutes.profile: (_) => const ProfileScreen(),
         AppRoutes.parkir: (_) => const AreaParkirScreen(),
         AppRoutes.info: (_) => const InfoScreen(),
-        '/camera': (_) => const CameraScreen(), // optional kamera
+        AppRoutes.verifyOtp: (_) => const VerifyOtpScreen(),
       },
     );
   }

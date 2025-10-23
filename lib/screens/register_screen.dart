@@ -1,13 +1,12 @@
 // ignore_for_file: deprecated_member_use
 
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_textfield.dart';
 import '../widgets/custom_button.dart';
 import '../routes/app_routes.dart';
+import '../routes/api_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -91,66 +90,50 @@ class _RegisterScreenState extends State<RegisterScreen>
     setState(() => _isLoading = true);
 
     try {
-      // ✅ GUNAKAN IP KHUSUS EMULATOR
-      const apiUrl = 'http://10.0.2.2:8000/api/register';
-
-      print('📤 Mengirim request ke $apiUrl');
-
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json', // Tambahkan ini untuk respons JSON
-        },
-        body: jsonEncode({
-          'name': name,
-          'email': email,
-          'password': password,
-          'password_confirmation': confirm,
-        }),
+      final responseMap = await ApiService.register(
+        name: name,
+        email: email,
+        password: password,
+        confirmPassword: confirm,
       );
 
       if (!mounted) return;
       setState(() => _isLoading = false);
 
-      print('📥 Status Code: ${response.statusCode}');
-      print('📦 Response: ${response.body}');
+      final statusCode = responseMap['statusCode'] as int;
+      final body = responseMap['body'] as Map<String, dynamic>;
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        // SUKSES
+      if (statusCode == 200 || statusCode == 201) {
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('register_email', email);
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Registrasi berhasil! Cek email Anda untuk OTP.'),
           ),
         );
 
+        if (!mounted) return;
         Navigator.pushNamed(
           context,
           AppRoutes.verifyOtp,
           arguments: {'email': email},
         );
-      } else if (response.statusCode == 422) {
-        // --- Tangani Error Validasi 422 Secara Detail ---
-        final data = jsonDecode(response.body);
-        
-        // Cek apakah ada kunci 'errors' dari Laravel
-        if (data.containsKey('errors')) {
-          final errorMessage = _formatValidationErrors(data['errors']);
+      } else if (statusCode == 422) {
+        if (body.containsKey('errors') && body['errors'] is Map<String, dynamic>) {
+          final errorMessage = _formatValidationErrors(Map<String, dynamic>.from(body['errors']));
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(errorMessage)),
           );
         } else {
-          // Fallback jika 422 tapi formatnya tidak standar
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(data['message'] ?? 'Validasi gagal.')),
+            SnackBar(content: Text(body['message'] ?? 'Validasi gagal.')),
           );
         }
-      } 
-      else {
-        // Error server umum (500, 400, dll.)
-        final data = jsonDecode(response.body);
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(data['message'] ?? 'Terjadi kesalahan pada server.')),
+          SnackBar(content: Text(body['message'] ?? 'Terjadi kesalahan pada server.')),
         );
       }
     } catch (e) {

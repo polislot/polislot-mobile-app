@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pin_code_fields/pin_code_fields.dart'; 
 import '../routes/app_routes.dart';
+import '../routes/api_service.dart';
 
 class VerifyOtpScreen extends StatefulWidget {
   final String? email;
@@ -24,8 +23,6 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
   static const Color _primaryColor = Color(0xFF1976D2); // Mid Blue
   static const Color _deepBlue = Color(0xFF0D47A1);    // Deep Royal Blue
 
-  static const String _baseUrl = 'http://10.0.2.2:8000/api'; 
-
   late String _currentEmail;
 
   @override
@@ -40,16 +37,31 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
     }
   }
   
-  void _getRouteArguments() {
+  Future<void> _getRouteArguments() async {
     final args = ModalRoute.of(context)?.settings.arguments as Map?;
     final emailFromArgs = args?['email'] as String? ?? '';
-    
+
     if (emailFromArgs.isNotEmpty) {
-        setState(() {
-            _currentEmail = emailFromArgs;
-        });
-    } else if (_currentEmail.isEmpty) {
-        Future.microtask(() => Navigator.pop(context));
+      setState(() {
+        _currentEmail = emailFromArgs;
+      });
+      return;
+    }
+
+    // fallback: coba baca dari SharedPreferences (misalnya setelah register menyimpan)
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString('register_email') ?? '';
+      if (saved.isNotEmpty) {
+        if (!mounted) return;
+        setState(() => _currentEmail = saved);
+        return;
+      }
+    } catch (_) {}
+
+    // jika tetap kosong, kembali (atau tutup layar)
+    if (_currentEmail.isEmpty) {
+      Future.microtask(() => Navigator.pop(context));
     }
   }
 
@@ -75,69 +87,74 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
       _showSnackBar('Kode OTP harus 6 digit.');
       return;
     }
-    
+
     final email = _currentEmail;
-    final otp = _otpTextController.text.trim(); // Ambil nilai dari controller
+    final otp = _otpTextController.text.trim();
 
     if (!mounted) return;
     setState(() => _isLoading = true);
 
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/verify-register-otp'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: jsonEncode({'email': email, 'otp': otp}),
-      );
+      final responseMap = await ApiService.verifyOtp(email: email, otp: otp);
 
-      if (!mounted) return; 
-      setState(() => _isLoading = false); 
+      if (!mounted) return;
+      setState(() => _isLoading = false);
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+      final statusCode = responseMap['statusCode'] as int;
+      final body = responseMap['body'] as Map<String, dynamic>;
+
+      if (statusCode == 200) {
+        final data = body['data'] as Map<String, dynamic>? ?? {};
+
         final prefs = await SharedPreferences.getInstance();
-        
-        await prefs.setString('access_token', data['data']['access_token']);
-        await prefs.setString('user_data', jsonEncode(data['data']['user'])); 
+        await prefs.setString('access_token', data['access_token'] ?? '');
+        await prefs.setString('user_data', data['user'] != null ? bodyEncode(data['user']) : '{}');
         await prefs.setBool('isLoggedIn', true);
 
-        _showSnackBar(data['message'] ?? 'Verifikasi berhasil! Selamat datang.');
-        
+       // _showSnackBar(body['message'] ?? 'Verifikasi berhasil! Selamat datang.');
+
         if (!mounted) return;
         Navigator.of(context).pushNamedAndRemoveUntil(
-          AppRoutes.welcome, 
+          AppRoutes.welcome,
           (route) => false,
         );
-
       } else {
         String errorMessage = 'Kode OTP salah atau telah kedaluwarsa.';
-        try {
-          final errorData = jsonDecode(response.body);
-          if (errorData.containsKey('message')) {
-            errorMessage = errorData['message'];
-          } else if (errorData.containsKey('errors') && errorData['errors'].values.isNotEmpty) {
-             errorMessage = errorData['errors'].values.first[0];
+        if (body.containsKey('message') && body['message'] != null) {
+          errorMessage = body['message'].toString();
+        } else if (body.containsKey('errors') && body['errors'] is Map) {
+          final errorsMap = Map<String, dynamic>.from(body['errors']);
+          if (errorsMap.values.isNotEmpty) {
+            final first = errorsMap.values.first;
+            if (first is List && first.isNotEmpty) {
+              errorMessage = first.first.toString();
+            } else {
+              errorMessage = first.toString();
+            }
           }
-        } on FormatException {
-          errorMessage = 'Kesalahan Server: Status ${response.statusCode}';
         }
-        
         _showSnackBar(errorMessage);
       }
-
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
       _showSnackBar('Gagal terhubung ke server. Periksa koneksi Anda.');
-      debugPrint('Error: $e');
+      debugPrint('Verify OTP Error: $e');
     }
   }
 
-// ----------------------------------------------------------------------
-// 🟠 FUNGSI KIRIM ULANG OTP
-// ----------------------------------------------------------------------
+  // Helper untuk menyimpan json user sebagai string (simple guard)
+  String bodyEncode(dynamic value) {
+    try {
+      return value is String ? value : value != null ? value.toString() : '{}';
+    } catch (_) {
+      return '{}';
+    }
+  }
+
+  // ----------------------------------------------------------------------
+  // 🟠 FUNGSI KIRIM ULANG OTP (menggunakan ApiService)
+  // ----------------------------------------------------------------------
   Future<void> _resendOtp() async {
     final email = _currentEmail;
 
@@ -145,30 +162,24 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
     setState(() => _isResending = true);
 
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/resend-register-otp'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: jsonEncode({'email': email}),
-      );
+      final responseMap = await ApiService.resendOtp(email: email);
 
       if (!mounted) return;
       setState(() => _isResending = false);
 
-      final data = jsonDecode(response.body);
-      
-      if (response.statusCode == 200) {
-        _showSnackBar(data['message'] ?? 'Kode OTP baru telah dikirim!');
-      } else {
-        _showSnackBar(data['message'] ?? 'Gagal mengirim ulang OTP. Coba lagi.');
-      }
+      final statusCode = responseMap['statusCode'] as int;
+      final body = responseMap['body'] as Map<String, dynamic>;
 
+      if (statusCode == 200) {
+        _showSnackBar(body['message'] ?? 'Kode OTP baru telah dikirim!');
+      } else {
+        _showSnackBar(body['message'] ?? 'Gagal mengirim ulang OTP. Coba lagi.');
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isResending = false);
       _showSnackBar('Gagal mengirim ulang: Periksa koneksi.');
+      debugPrint('Resend OTP Error: $e');
     }
   }
 

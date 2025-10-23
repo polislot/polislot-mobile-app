@@ -3,6 +3,9 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../routes/api_service.dart';
+import '../routes/app_routes.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -15,6 +18,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     with TickerProviderStateMixin {
   int _sectionIndex = 0;
   File? _selectedImage;
+  bool _isLoggingOut = false;
 
   final TextEditingController _emailController =
       TextEditingController(text: "yani123@gmail.com");
@@ -126,10 +130,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                         style: TextStyle(color: Color(0xFF1565C0), fontWeight: FontWeight.bold)),
                   ),
                   ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Logout berhasil")));
+                      await _performLogout();
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF1565C0),
@@ -146,6 +149,50 @@ class _ProfileScreenState extends State<ProfileScreen>
         ),
       ),
     );
+  }
+
+  Future<void> _performLogout() async {
+    if (!mounted) return;
+    setState(() => _isLoggingOut = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('access_token') ?? '';
+
+      if (token.isEmpty) {
+        await prefs.remove('access_token');
+        await prefs.remove('user_data');
+        await prefs.setBool('isLoggedIn', false);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Logout berhasil')));
+        Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
+        return;
+      }
+
+      final responseMap = await ApiService.logout(token);
+      final statusCode = responseMap['statusCode'] as int;
+      final body = responseMap['body'] as Map<String, dynamic>;
+
+      if (statusCode == 200) {
+        await prefs.remove('access_token');
+        await prefs.remove('user_data');
+        await prefs.setBool('isLoggedIn', false);
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(body['message'] ?? 'Logout berhasil')));
+        Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
+        
+      } else {
+        // --- GAGAL (API Error) ---
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(body['message'] ?? 'Gagal logout')));
+        setState(() => _isLoggingOut = false);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal terhubung ke server: $e')));
+      setState(() => _isLoggingOut = false);
+    } 
   }
 
   @override
