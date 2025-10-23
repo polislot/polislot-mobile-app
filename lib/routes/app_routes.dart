@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+// 🟢 Import semua screen
 import '../screens/splash_screen.dart';
 import '../screens/login_regis_screen.dart';
 import '../screens/login_screen.dart';
@@ -12,8 +14,12 @@ import '../screens/profile_screen.dart';
 import '../screens/parkir_screen.dart';
 import '../screens/info_screen.dart';
 import '../screens/verify_otp_screen.dart';
+import '../screens/forgot_password_screen.dart';
+import '../screens/verify_reset_otp_screen.dart';
+import '../screens/reset_password_screen.dart';
 
 class AppRoutes {
+  // 🔹 Daftar nama route
   static const splash = '/';
   static const loginRegis = '/loginRegis';
   static const login = '/login';
@@ -27,7 +33,11 @@ class AppRoutes {
   static const parkir = '/parkir';
   static const info = '/info';
   static const verifyOtp = '/verifyOtp';
+  static const forgotPassword = '/forgotPassword';
+  static const verifyResetOtp = '/verifyResetOtp';
+  static const resetPassword = '/resetPassword';
 
+  // 🔸 Route statis (tanpa parameter)
   static Map<String, WidgetBuilder> routes = {
     splash: (context) => const SplashScreen(),
     loginRegis: (context) => const LoginRegisScreen(),
@@ -42,10 +52,33 @@ class AppRoutes {
     parkir: (context) => const AreaParkirScreen(),
     info: (context) => const InfoScreen(),
     verifyOtp: (context) => const VerifyOtpScreen(),
+    forgotPassword: (context) => const ForgotPasswordScreen(),
   };
+
+  // 🔹 Route dinamis (dengan parameter)
+  static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
+    switch (settings.name) {
+      case verifyResetOtp:
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(
+          builder: (_) => VerifyResetOtpScreen(email: args['email']),
+        );
+
+      case resetPassword:
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(
+          builder: (_) => ResetPasswordScreen(email: args['email']),
+        );
+
+      default:
+        return MaterialPageRoute(
+          builder: (_) => const SplashScreen(),
+        );
+    }
+  }
 }
 
-/// 🔹 Helper untuk transisi slide animasi antar halaman
+/// 🔹 Helper untuk animasi transisi antar halaman
 Route slideRoute(Widget page, {bool fromRight = true}) {
   return PageRouteBuilder(
     pageBuilder: (context, animation, secondaryAnimation) => page,

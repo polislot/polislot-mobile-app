@@ -80,6 +80,12 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   void dispose() {
     _menuAnimCtrl.dispose();
+    _emailController.dispose();
+    _nameController.dispose();
+    _passController.dispose();
+    _confirmPassController.dispose();
+    _judulCtrl.dispose();
+    _deskripsiCtrl.dispose();
     super.dispose();
   }
 
@@ -90,25 +96,94 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (picked != null) setState(() => _selectedImage = File(picked.path));
   }
 
+  // ✅ LOGOUT LOGIC - CLEAN & SIMPLE
+  Future<void> _handleLogout() async {
+    setState(() => _isLoggingOut = true);
+
+    // Get token from SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('access_token') ?? '';
+
+    final response = await ApiService.logout(token);
+
+    if (!mounted) return;
+    setState(() => _isLoggingOut = false);
+
+    if (response.isSuccess) {
+      // ✅ LOGOUT BERHASIL - Clear local data
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('access_token');
+      await prefs.remove('user_data');
+      await prefs.setBool('isLoggedIn', false);
+
+      _showSnackBar(response.message, Colors.green);
+
+      if (!mounted) return;
+      // Navigate to login and clear all previous routes
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRoutes.login,
+        (route) => false,
+      );
+    } else {
+      // ❌ ERROR - Show error but still clear local session if unauthorized
+      if (response.statusCode == 401) {
+        // Token expired or invalid - clear local data anyway
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.clear();
+        
+        _showSnackBar("Sesi telah berakhir. Silakan login kembali.", Colors.orange);
+        
+        if (!mounted) return;
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          AppRoutes.login,
+          (route) => false,
+        );
+      } else {
+        _showSnackBar(response.fullErrorMessage, Colors.red);
+      }
+    }
+  }
+
+  void _showSnackBar(String message, Color color) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+  }
+
+  // ✅ LOGOUT DIALOG - IMPROVED
   void _showLogoutDialog() {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         backgroundColor: const Color(0xFFF3F6FB),
-        child: Container(
+        child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.warning_amber_rounded,
-                  color: Color(0xFF1565C0), size: 50),
+              const Icon(
+                Icons.logout_rounded,
+                color: Color(0xFF1565C0),
+                size: 50,
+              ),
               const SizedBox(height: 10),
-              const Text("Konfirmasi Logout",
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1565C0),
-                      fontSize: 18)),
+              const Text(
+                "Konfirmasi Logout",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1565C0),
+                  fontSize: 18,
+                ),
+              ),
               const SizedBox(height: 10),
               const Text(
                 "Apakah Anda yakin ingin keluar dari akun Anda?",
@@ -116,83 +191,61 @@ class _ProfileScreenState extends State<ProfileScreen>
                 style: TextStyle(color: Colors.black87),
               ),
               const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF1565C0), width: 1.5),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      minimumSize: const Size(110, 44),
+              
+              // Show loading or buttons
+              _isLoggingOut
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 10),
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF1565C0),
+                        strokeWidth: 3,
+                      ),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(
+                              color: Color(0xFF1565C0),
+                              width: 1.5,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            minimumSize: const Size(110, 44),
+                          ),
+                          child: const Text(
+                            "Batal",
+                            style: TextStyle(
+                              color: Color(0xFF1565C0),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () async {
+                            Navigator.pop(context); // Close dialog
+                            await _handleLogout(); // Execute logout
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1565C0),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            minimumSize: const Size(110, 44),
+                          ),
+                          child: const Text("Ya, Keluar"),
+                        ),
+                      ],
                     ),
-                    child: const Text("Batal",
-                        style: TextStyle(color: Color(0xFF1565C0), fontWeight: FontWeight.bold)),
-                  ),
-                  ElevatedButton(
-                    onPressed: () async {
-                      Navigator.pop(context);
-                      await _performLogout();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1565C0),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      minimumSize: const Size(110, 44),
-                    ),
-                    child: const Text("Ya, Keluar"),
-                  ),
-                ],
-              )
             ],
           ),
         ),
       ),
     );
-  }
-
-  Future<void> _performLogout() async {
-    if (!mounted) return;
-    setState(() => _isLoggingOut = true);
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('access_token') ?? '';
-
-      if (token.isEmpty) {
-        await prefs.remove('access_token');
-        await prefs.remove('user_data');
-        await prefs.setBool('isLoggedIn', false);
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Logout berhasil')));
-        Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
-        return;
-      }
-
-      final responseMap = await ApiService.logout(token);
-      final statusCode = responseMap['statusCode'] as int;
-      final body = responseMap['body'] as Map<String, dynamic>;
-
-      if (statusCode == 200) {
-        await prefs.remove('access_token');
-        await prefs.remove('user_data');
-        await prefs.setBool('isLoggedIn', false);
-
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(body['message'] ?? 'Logout berhasil')));
-        Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
-        
-      } else {
-        // --- GAGAL (API Error) ---
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(body['message'] ?? 'Gagal logout')));
-        setState(() => _isLoggingOut = false);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal terhubung ke server: $e')));
-      setState(() => _isLoggingOut = false);
-    } 
   }
 
   @override
@@ -418,8 +471,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         const SizedBox(height: 24),
         ElevatedButton(
           onPressed: () {
-            ScaffoldMessenger.of(context)
-                .showSnackBar(const SnackBar(content: Text("Perubahan disimpan")));
+            _showSnackBar("Perubahan disimpan", Colors.green);
             _changeSection(0);
           },
           style: ElevatedButton.styleFrom(
@@ -504,8 +556,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         const SizedBox(height: 20),
         ElevatedButton(
           onPressed: () {
-            ScaffoldMessenger.of(context)
-                .showSnackBar(const SnackBar(content: Text("Masukan berhasil dikirim")));
+            _showSnackBar("Masukan berhasil dikirim", Colors.green);
             _changeSection(0);
           },
           style: ElevatedButton.styleFrom(
