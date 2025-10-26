@@ -44,9 +44,17 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
     }
   }
 
-  void _showSnack(String msg) {
+  void _showSnack(String msg, {bool isError = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: isError ? Colors.red[700] : Colors.green[700],
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
   }
 
   // =====================================================
@@ -75,48 +83,63 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
   // ✅ Verifikasi OTP
   // =====================================================
   Future<void> _verifyOtp() async {
-    if (!_otpFormKey.currentState!.validate()) {
-      _showSnack('Kode OTP harus 6 digit.');
-      return;
-    }
-
-    setState(() => _isLoading = true);
-    try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/verify-register-otp'),
-        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-        body: jsonEncode({'email': _email, 'otp': _otpController.text.trim()}),
-      );
-
-      final result = await _handleApiResponse(response);
-      setState(() => _isLoading = false);
-
-      if (result['success'] && result['data'] != null) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('access_token', result['data']['access_token']);
-        await prefs.setString('user_data', jsonEncode(result['data']['user']));
-        await prefs.setBool('isLoggedIn', true);
-
-        _showSnack(result['message'] ?? 'Verifikasi berhasil!');
-        if (!mounted) return;
-        Navigator.of(context)
-            .pushNamedAndRemoveUntil(AppRoutes.welcome, (route) => false);
-      } else {
-        // Tangani error validasi (422)
-        final errors = result['errors'];
-        String msg = result['message'];
-        if (errors is Map && errors.isNotEmpty) {
-          msg = errors.values.first[0];
-        }
-        _showSnack(msg);
-      }
-    } catch (e) {
-      setState(() => _isLoading = false);
-      _showSnack('Tidak dapat terhubung ke server. Pastikan koneksi aktif.');
-      debugPrint('❌ Verify OTP Error: $e');
-    }
+  if (!_otpFormKey.currentState!.validate()) {
+    _showSnack('Kode OTP harus 6 digit.', isError: true);
+    return;
   }
 
+  setState(() => _isLoading = true);
+  try {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/verify-register-otp'),
+      headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+      body: jsonEncode({'email': _email, 'otp': _otpController.text.trim()}),
+    );
+
+    final result = await _handleApiResponse(response);
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (result['success'] && result['data'] != null) {
+      // ✅ Simpan token dan data user
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('access_token', result['data']['access_token']);
+      await prefs.setString('user_data', jsonEncode(result['data']['user']));
+      await prefs.setBool('isLoggedIn', true);
+
+      if (!mounted) return;
+
+      // 🟢 Tampilkan snackbar sukses (langsung seperti di LoginScreen)
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Verifikasi berhasil!'),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          duration: const Duration(milliseconds: 1500),
+        ),
+      );
+
+      // ✅ Langsung navigasi tanpa delay (SnackBar akan muncul sebentar)
+      Navigator.of(context).pushReplacementNamed(AppRoutes.welcome);
+    } else {
+      if (!mounted) return;
+      final errors = result['errors'];
+      String msg = result['message'];
+      if (errors is Map && errors.isNotEmpty) {
+        msg = errors.values.first[0];
+      }
+      _showSnack(msg, isError: true);
+    }
+  } catch (e) {
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    _showSnack('Tidak dapat terhubung ke server. Pastikan koneksi aktif.', isError: true);
+    debugPrint('❌ Verify OTP Error: $e');
+  }
+}
   // =====================================================
   // 🔁 Kirim Ulang OTP
   // =====================================================
@@ -130,14 +153,27 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
       );
 
       final result = await _handleApiResponse(response);
+      
+      if (!mounted) return; // ✅ Cek mounted
       setState(() => _isResending = false);
 
-      _showSnack(result['message'] ?? 'OTP baru telah dikirim.');
+      // Success atau error, tampilkan dengan warna sesuai
+      _showSnack(
+        result['message'] ?? 'OTP baru telah dikirim.',
+        isError: !result['success']
+      );
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isResending = false);
-      _showSnack('Gagal mengirim ulang OTP. Periksa koneksi Anda.');
+      _showSnack('Gagal mengirim ulang OTP. Periksa koneksi Anda.', isError: true);
       debugPrint('❌ Resend OTP Error: $e');
     }
+  }
+
+  @override
+  void dispose() {
+    _otpController.dispose();
+    super.dispose();
   }
 
   @override

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 
 class ApiResponse<T> {
@@ -21,8 +22,20 @@ class ApiResponse<T> {
     int statusCode, {
     T Function(dynamic)? fromJsonT,
   }) {
+    // 🔥 PERBAIKAN: Support format 'status' dan 'success'
+    bool isSuccess = false;
+    
+    // Cek apakah ada field 'status' dengan value 'success'
+    if (json.containsKey('status') && json['status'] == 'success') {
+      isSuccess = true;
+    }
+    // Atau cek apakah ada field 'success' dengan value true
+    else if (json.containsKey('success') && json['success'] == true) {
+      isSuccess = true;
+    }
+    
     return ApiResponse<T>(
-      success: json['status'] == 'success',
+      success: isSuccess,
       message: json['message'] ?? 'Unknown error',
       data: fromJsonT != null && json['data'] != null
           ? fromJsonT(json['data'])
@@ -156,7 +169,46 @@ class ApiService {
   }
 
   // -----------------------------------------------------------
-  // 🧩 REUSABLE POST REQUEST
+  // 👤 PROFILE METHODS
+  // -----------------------------------------------------------
+
+  // 🟢 GET PROFILE
+  static Future<ApiResponse> getProfile(String accessToken) async {
+    return _getRequest(
+      endpoint: "/profile",
+      headers: {'Authorization': 'Bearer $accessToken'},
+    );
+  }
+
+  // 🟡 UPDATE PROFILE (dengan atau tanpa avatar & password)
+static Future<ApiResponse> updateProfile({
+  required String accessToken,
+  required String name,
+  File? avatarFile,
+  String? currentPassword,
+  String? newPassword,
+  String? confirmPassword,
+}) async {
+  return _multipartRequest(
+    endpoint: "/profile",
+    method: "POST", // ✅ Ubah dari PUT ke POST
+    headers: {'Authorization': 'Bearer $accessToken'},
+    fields: {
+      '_method': 'PUT', // ✅ Tambahkan ini untuk Laravel method spoofing
+      'name': name,
+      if (currentPassword != null && currentPassword.isNotEmpty)
+        'current_password': currentPassword,
+      if (newPassword != null && newPassword.isNotEmpty)
+        'new_password': newPassword,
+      if (confirmPassword != null && confirmPassword.isNotEmpty)
+        'new_password_confirmation': confirmPassword,
+    },
+    file: avatarFile != null ? {'avatar': avatarFile} : null,
+  );
+}
+
+  // -----------------------------------------------------------
+  // 🧩 REUSABLE POST REQUEST (JSON)
   // -----------------------------------------------------------
   static Future<ApiResponse> _postRequest({
     required String endpoint,
@@ -195,7 +247,7 @@ class ApiService {
   }
 
   // -----------------------------------------------------------
-  // 🧩 REUSABLE GET REQUEST (untuk endpoint lain nanti)
+  // 🧩 REUSABLE GET REQUEST
   // -----------------------------------------------------------
   static Future<ApiResponse<T>> _getRequest<T>({
     required String endpoint,
@@ -235,7 +287,72 @@ class ApiService {
     }
   }
 
-  // Helper untuk format error message
+  // -----------------------------------------------------------
+  // 🧩 REUSABLE MULTIPART REQUEST (untuk upload file)
+  // -----------------------------------------------------------
+  static Future<ApiResponse> _multipartRequest({
+    required String endpoint,
+    required String method, // POST, PUT, PATCH
+    required Map<String, String> fields,
+    Map<String, File>? file,
+    Map<String, String>? headers,
+  }) async {
+    final defaultHeaders = {
+      'Accept': 'application/json',
+      ...?headers,
+    };
+
+    try {
+      final request = http.MultipartRequest(
+        method,
+        Uri.parse("$baseUrl$endpoint"),
+      );
+
+      // Add headers
+      request.headers.addAll(defaultHeaders);
+
+      // Add text fields
+      request.fields.addAll(fields);
+
+      // Add file (jika ada)
+      if (file != null) {
+        for (var entry in file.entries) {
+          final fileStream = http.ByteStream(entry.value.openRead());
+          final fileLength = await entry.value.length();
+          final multipartFile = http.MultipartFile(
+            entry.key,
+            fileStream,
+            fileLength,
+            filename: entry.value.path.split('/').last,
+          );
+          request.files.add(multipartFile);
+        }
+      }
+
+      // Send request
+      final streamedResponse = await request.send().timeout(
+            const Duration(seconds: 30),
+            onTimeout: () => throw Exception('Connection timeout'),
+          );
+
+      // Get response
+      final response = await http.Response.fromStream(streamedResponse);
+      final responseBody = jsonDecode(response.body) as Map<String, dynamic>;
+
+      return ApiResponse.fromJson(responseBody, response.statusCode);
+    } catch (e) {
+      print('API Error ($endpoint): $e');
+      return ApiResponse(
+        success: false,
+        message: _getErrorMessage(e),
+        statusCode: 0,
+      );
+    }
+  }
+
+  // -----------------------------------------------------------
+  // 🧩 ERROR MESSAGE HELPER
+  // -----------------------------------------------------------
   static String _getErrorMessage(dynamic error) {
     if (error.toString().contains('timeout')) {
       return 'Koneksi timeout. Periksa internet Anda.';

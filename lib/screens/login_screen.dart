@@ -1,4 +1,4 @@
-// ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously
 import 'dart:convert'; 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -48,7 +48,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     super.dispose();
   }
 
-  // ✅ LOGIN LOGIC - FIXED NAVIGATION ISSUE
+  // ✅ LOGIN LOGIC - FIXED MOUNTED ERROR
   Future<void> _loginUser() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -60,7 +60,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         password: _passwordController.text,
       );
 
-      // ⚠️ CRITICAL: Check if widget is still mounted before any UI operation
+      // ⚠️ CRITICAL: Check mounted sebelum setState
       if (!mounted) return;
 
       setState(() => _isLoading = false);
@@ -71,25 +71,32 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         final user = response.data?['user'];
 
         if (token != null && user != null) {
+          // Save to SharedPreferences
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('access_token', token);
           await prefs.setString('user_data', jsonEncode(user));
           await prefs.setBool('isLoggedIn', true);
 
-          // Show success message
+          // ✅ Check mounted SEBELUM akses context
           if (!mounted) return;
-          _showSnackBar(response.message, Colors.green);
 
-          // ⏱️ Add small delay to let snackbar show before navigation
-          await Future.delayed(const Duration(milliseconds: 500));
-
-          // Navigate only if still mounted
-          if (!mounted) return;
+          // Simpan navigator reference
+          final navigator = Navigator.of(context);
           
-          // Use pushReplacementNamed with proper context
-          Navigator.of(context, rootNavigator: true).pushReplacementNamed(
-            AppRoutes.welcome,
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response.message),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              duration: const Duration(milliseconds: 1500),
+            ),
           );
+
+          // ✅ Navigate LANGSUNG tanpa delay
+          navigator.pushReplacementNamed(AppRoutes.welcome);
         } else {
           if (!mounted) return;
           _showSnackBar('Data login tidak lengkap', Colors.red);
@@ -97,12 +104,22 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       } else if (response.statusCode == 403 && response.data?['code'] == 'UNVERIFIED') {
         // ⚠️ AKUN BELUM TERVERIFIKASI
         if (!mounted) return;
-        _showSnackBar(response.message, Colors.orange);
+        
+        final navigator = Navigator.of(context);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.message),
+            backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            duration: const Duration(milliseconds: 800),
+          ),
+        );
 
-        await Future.delayed(const Duration(milliseconds: 500));
-
-        if (!mounted) return;
-        Navigator.of(context, rootNavigator: true).pushNamed(
+        // Navigate langsung
+        navigator.pushNamed(
           AppRoutes.verifyOtp,
           arguments: {'email': _emailController.text.trim()},
         );
@@ -122,9 +139,6 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
 
   void _showSnackBar(String message, Color color) {
     if (!mounted) return;
-    
-    // Clear any existing snackbars first
-    ScaffoldMessenger.of(context).clearSnackBars();
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
