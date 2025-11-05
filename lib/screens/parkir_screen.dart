@@ -143,7 +143,6 @@ class _AreaParkirScreenState extends State<AreaParkirScreen> {
                         ],
                       ),
                     ),
-                    const Icon(Icons.chevron_right, color: Colors.white),
                   ],
                 ),
               ),
