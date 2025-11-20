@@ -21,7 +21,7 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
   bool _isResending = false;
   late String _email;
 
-  static const String _baseUrl = 'http://10.0.2.2:8000/api';
+  static const String _baseUrl = 'http://192.168.137.1:8000/api';
   static const Color _primaryColor = Color(0xFF1976D2);
   static const Color _deepBlue = Color(0xFF0D47A1);
 

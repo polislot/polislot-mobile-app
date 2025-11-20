@@ -60,7 +60,7 @@ class ApiResponse<T> {
 }
 
 class ApiService {
-  static const String baseUrl = "http://10.0.2.2:8000/api";
+  static const String baseUrl = "http://192.168.137.1:8000/api";
 
   // 🟢 REGISTER
   static Future<ApiResponse> register({

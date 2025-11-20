@@ -81,10 +81,10 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           if (!mounted) return;
 
           // Simpan navigator reference
-          final navigator = Navigator.of(context);
+          // final navigator = Navigator.of(context);
           
           // Show success message
-          ScaffoldMessenger.of(context).showSnackBar(
+          await ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(response.message),
               backgroundColor: Colors.green,
@@ -93,10 +93,10 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               duration: const Duration(milliseconds: 1500),
             ),
-          );
+          ).closed;
 
           // ✅ Navigate LANGSUNG tanpa delay
-          navigator.pushReplacementNamed(AppRoutes.welcome);
+          Navigator.of(context).pushReplacementNamed(AppRoutes.welcome);
         } else {
           if (!mounted) return;
           _showSnackBar('Data login tidak lengkap', Colors.red);
