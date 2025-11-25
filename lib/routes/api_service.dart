@@ -1,6 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import '../models/info_board.dart';
+import '../models/tier_model.dart';
+import '../models/leaderboard_user.dart';
+import '../models/reward_model.dart';
+import '../models/user_reward_model.dart';
+import '../models/feedback_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiResponse<T> {
   final bool success;
@@ -22,7 +29,7 @@ class ApiResponse<T> {
     int statusCode, {
     T Function(dynamic)? fromJsonT,
   }) {
-    // 🔥 PERBAIKAN: Support format 'status' dan 'success'
+    //  PERBAIKAN: Support format 'status' dan 'success'
     bool isSuccess = false;
     
     // Cek apakah ada field 'status' dengan value 'success'
@@ -169,7 +176,7 @@ class ApiService {
   }
 
   // -----------------------------------------------------------
-  // 👤 PROFILE METHODS
+  //  PROFILE METHODS
   // -----------------------------------------------------------
 
   // 🟢 GET PROFILE
@@ -179,6 +186,20 @@ class ApiService {
       headers: {'Authorization': 'Bearer $accessToken'},
     );
   }
+
+  // -----------------------------------------------------------
+  //  INFO BOARD METHODS
+  // -----------------------------------------------------------
+
+// 🟦 GET HOME / INFOBOARD
+static Future<ApiResponse<InfoBoard>> getHome(String accessToken) async {
+  return _getRequest<InfoBoard>(
+    endpoint: "/info-board/latest",
+    headers: {'Authorization': 'Bearer $accessToken'},
+    fromJson: (data) => InfoBoard.fromJson(data),
+  );
+}
+
 
   // 🟡 UPDATE PROFILE (dengan atau tanpa avatar & password)
 static Future<ApiResponse> updateProfile({
@@ -207,44 +228,163 @@ static Future<ApiResponse> updateProfile({
   );
 }
 
-  // -----------------------------------------------------------
-  // 🧩 REUSABLE POST REQUEST (JSON)
-  // -----------------------------------------------------------
-  static Future<ApiResponse> _postRequest({
-    required String endpoint,
-    required Map<String, dynamic> body,
-    Map<String, String>? headers,
-  }) async {
-    final defaultHeaders = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      ...?headers,
-    };
+// -----------------------------------------------------------
+//  USER TIER METHODS
+// -----------------------------------------------------------
 
-    try {
-      final response = await http
-          .post(
-            Uri.parse("$baseUrl$endpoint"),
-            headers: defaultHeaders,
-            body: jsonEncode(body),
-          )
-          .timeout(
-            const Duration(seconds: 10),
-            onTimeout: () => throw Exception('Connection timeout'),
-          );
+// 🟢 GET USER TIER
+static Future<ApiResponse<UserTier>> getUserTier(String accessToken) async {
+  return _getRequest<UserTier>(
+    endpoint: "/user/tier",
+    headers: {'Authorization': 'Bearer $accessToken'},
+    fromJson: (data) => UserTier.fromJson(data),
+  );
+}
 
-      final responseBody = jsonDecode(response.body) as Map<String, dynamic>;
+// 🟡 UPDATE USER TIER (cek & naikkan tier otomatis)
+static Future<ApiResponse> updateUserTier(String accessToken) async {
+  return _postRequest(
+    endpoint: "/user/tier/update",
+    headers: {'Authorization': 'Bearer $accessToken'},
+    // Tidak pakai body → Laravel tetap menangkapnya
+    body: {}, 
+  );
+}
 
-      return ApiResponse.fromJson(responseBody, response.statusCode);
-    } catch (e) {
-      print('API Error ($endpoint): $e');
-      return ApiResponse(
-        success: false,
-        message: _getErrorMessage(e),
-        statusCode: 0,
-      );
-    }
+// -----------------------------------------------------------
+//  LEADERBOARD METHODS
+// -----------------------------------------------------------
+
+// 🟢 GET LEADERBOARD (urut lifetime_points)
+static Future<ApiResponse<List<LeaderboardUser>>> getLeaderboard(
+    String accessToken) async {
+  return _getRequest<List<LeaderboardUser>>(
+    endpoint: "/user/leaderboard",
+    headers: {'Authorization': 'Bearer $accessToken'},
+    fromJson: (data) => (data as List)
+        .map((item) => LeaderboardUser.fromJson(item))
+        .toList(),
+  );
+}
+
+// -----------------------------------------------------------
+//  REWARD METHODS
+// -----------------------------------------------------------
+
+// 🟢 GET REWARD CATALOG (katalog + poin user)
+static Future<ApiResponse<RewardCatalogResponse>> getRewardCatalog(
+    String accessToken) async {
+  return _getRequest<RewardCatalogResponse>(
+    endpoint: "/rewards",
+    headers: {'Authorization': 'Bearer $accessToken'},
+    fromJson: (data) => RewardCatalogResponse.fromJson(data),
+  );
+}
+
+// 🟡 EXCHANGE REWARD (tukar poin dengan reward)
+static Future<ApiResponse<ExchangeRewardResponse>> exchangeReward({
+  required String accessToken,
+  required int rewardId,
+}) async {
+  return _postRequest<ExchangeRewardResponse>(
+    endpoint: "/rewards/exchange",
+    headers: {'Authorization': 'Bearer $accessToken'},
+    body: {'reward_id': rewardId},
+    fromJson: (data) => ExchangeRewardResponse.fromJson(data),
+  );
+}
+
+// 🟣 GET MY REWARDS (riwayat penukaran user)
+static Future<ApiResponse<List<UserReward>>> getMyRewards(
+    String accessToken) async {
+  return _getRequest<List<UserReward>>(
+    endpoint: "/rewards/my-rewards",
+    headers: {'Authorization': 'Bearer $accessToken'},
+    fromJson: (data) => (data as List)
+        .map((item) => UserReward.fromJson(item))
+        .toList(),
+  );
+}
+
+// 🔵 CHECK VOUCHER (cek detail voucher berdasarkan kode)
+static Future<ApiResponse> checkVoucher({
+  required String accessToken,
+  required String voucherCode,
+}) async {
+  return _postRequest(
+    endpoint: "/rewards/check-voucher",
+    headers: {'Authorization': 'Bearer $accessToken'},
+    body: {'voucher_code': voucherCode},
+  );
+}
+
+ 
+static Future<ApiResponse<T>> _postRequest<T>({
+  required String endpoint,
+  required Map<String, dynamic> body,
+  Map<String, String>? headers,
+  T Function(dynamic)? fromJson,
+}) async {
+  final defaultHeaders = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    ...?headers,
+  };
+
+  try {
+    final response = await http
+        .post(
+          Uri.parse("$baseUrl$endpoint"),
+          headers: defaultHeaders,
+          body: jsonEncode(body),
+        )
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => throw Exception('Connection timeout'),
+        );
+
+    final responseBody = jsonDecode(response.body) as Map<String, dynamic>;
+
+    return ApiResponse<T>.fromJson(
+      responseBody,
+      response.statusCode,
+      fromJsonT: fromJson,
+    );
+  } catch (e) {
+    print('API Error ($endpoint): $e');
+    return ApiResponse<T>(
+      success: false,
+      message: _getErrorMessage(e),
+      statusCode: 0,
+    );
   }
+}
+
+// -----------------------------------------------------------
+//  FEEDBACK METHODS
+// -----------------------------------------------------------
+
+// 🟢 SUBMIT FEEDBACK (kirim masukan/saran)
+static Future<ApiResponse<FeedbackResponse>> submitFeedback({
+  required String accessToken,
+  required String category,
+  required String feedbackType,
+  required String title,
+  String? description,
+}) async {
+  return _postRequest<FeedbackResponse>(
+    endpoint: "/user/feedback",
+    headers: {'Authorization': 'Bearer $accessToken'},
+    body: {
+      'category': category,
+      'feedback_type': feedbackType,
+      'title': title,
+      if (description != null && description.isNotEmpty) 
+        'description': description,
+    },
+    fromJson: (data) => FeedbackResponse.fromJson(data as Map<String, dynamic>),
+  );
+}
 
   // -----------------------------------------------------------
   // 🧩 REUSABLE GET REQUEST
@@ -349,6 +489,15 @@ static Future<ApiResponse> updateProfile({
       );
     }
   }
+
+  // -----------------------------------------------------------
+// TOKEN STORAGE
+// -----------------------------------------------------------
+static Future<String?> getToken() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getString("access_token");
+}
+
 
   // -----------------------------------------------------------
   // 🧩 ERROR MESSAGE HELPER

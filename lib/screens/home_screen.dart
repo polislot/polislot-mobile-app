@@ -2,8 +2,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'mission_screen.dart';
 import 'parkir_screen.dart';
+
+// Import model dan service yang diperlukan
+import '../models/info_board.dart';
+import '../routes/api_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,6 +21,11 @@ class _HomeScreenState extends State<HomeScreen> {
   final PageController _pageController = PageController();
   Timer? _timer;
 
+  // State baru untuk Info Board
+  InfoBoard? _infoBoard;
+  bool _isLoadingInfo = true;
+  String? _infoError;
+
   final List<String> _slideTexts = [
     "Selamat Datang di Aplikasi PoliSlot! Temukan slot parkir terbaikmu.",
     "Ayo klaim validasi harian untuk dapatkan poin!💪",
@@ -26,6 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _checkAuthAndFetchData(); // ✅ Periksa auth dulu
     _timer = Timer.periodic(const Duration(seconds: 4), (timer) {
       if (!mounted) return;
       int nextPage = (_pageController.page?.toInt() ?? 0) + 1;
@@ -45,22 +56,141 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  // ✅ Fungsi baru: Cek autentikasi terlebih dahulu
+  Future<void> _checkAuthAndFetchData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('access_token');
+
+      if (token == null || token.isEmpty) {
+        if (!mounted) return;
+        setState(() {
+          _infoError = 'Silakan login terlebih dahulu.';
+          _isLoadingInfo = false;
+        });
+        return;
+      }
+
+      // Jika token ada, fetch data
+      await _fetchInfoBoardData(token);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _infoError = 'Gagal mengambil token autentikasi.';
+        _isLoadingInfo = false;
+      });
+    }
+  }
+
+  // ✅ Fungsi untuk mengambil data Info Board dengan token asli
+  Future<void> _fetchInfoBoardData(String accessToken) async {
+    try {
+      final response = await ApiService.getHome(accessToken);
+
+      // Debug (opsional, bisa dihapus nanti)
+      print('API Response: ${response.message}');
+      print('Status Code: ${response.statusCode}');
+      print('Success: ${response.success}');
+
+      if (!mounted) return;
+
+      if (response.success && response.data != null) {
+        setState(() {
+          _infoBoard = response.data as InfoBoard;
+          _isLoadingInfo = false;
+          _infoError = null; // ✅ Clear error jika berhasil
+        });
+      } else {
+        setState(() {
+          _infoError = response.message ?? 'Gagal memuat info board.';
+          _isLoadingInfo = false;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      print('Error fetching info board: $e'); // Debug
+      setState(() {
+        _infoError = 'Terjadi kesalahan jaringan: $e';
+        _isLoadingInfo = false;
+      });
+    }
+  }
+
+  // ✅ FUNGSI UTAMA YANG DIMODIFIKASI
   void _showInfoDialog(BuildContext context) {
+    if (_infoBoard == null) return;
+
+    // ✅ Format tanggal jika ada, jika tidak tampilkan placeholder
+    String displayDate = _infoBoard!.tanggal.isNotEmpty
+        ? _infoBoard!.tanggal
+        : 'Tanggal tidak tersedia';
+
+    // ✅ Format isi jika ada, jika tidak tampilkan placeholder
+    String displayContent = _infoBoard!.isi.isNotEmpty
+        ? _infoBoard!.isi
+        : 'Tidak ada detail tersedia';
+
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text(
-            "Pemberitahuan Penting",
-            style: TextStyle(
+          // Menghapus scrollable: true
+          title: Text(
+            _infoBoard!.judul.isNotEmpty ? _infoBoard!.judul : 'Pengumuman',
+            style: const TextStyle(
               fontWeight: FontWeight.bold,
               color: Color(0xFF1352C8),
+              // 1. Ukuran Font Judul Dikecilkan
+              fontSize: 18, 
             ),
           ),
-          content: const Text(
-            "Pada Hari Selasa, 08 Oktober akan diberlakukan peraturan wajib helm bagi seluruh pengguna kendaraan roda dua di area kampus.",
+          content: Column(
+            // Penting: mainAxisSize.min agar AlertDialog tidak mengambil seluruh tinggi layar
+            mainAxisSize: MainAxisSize.min, 
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 👇 Batasi tinggi konten dan buat konten bisa di-scroll
+              ConstrainedBox(
+                // Membatasi tinggi maksimum konten agar modal tetap berukuran wajar
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.20, 
+                ),
+                child: SingleChildScrollView(
+                  child: Text(
+                    displayContent,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      height: 1.5,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 8),
+              // 2. Tanggal di Pojok Kanan Bawah
+              Align(
+                alignment: Alignment.centerRight,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
+                    const SizedBox(width: 6),
+                    Text(
+                      displayDate,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           actions: [
             TextButton(
@@ -118,7 +248,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 _buildParkingCard(),
                 const SizedBox(height: 16),
                 InkWell(
-                  onTap: () => _showInfoDialog(context),
+                  onTap: _infoBoard != null ? () => _showInfoDialog(context) : null,
                   borderRadius: BorderRadius.circular(16),
                   child: _buildInfoBoard(),
                 ),
@@ -253,21 +383,49 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ✅ PERBAIKAN: _buildInfoBoard dengan handling yang lebih baik
   Widget _buildInfoBoard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    Widget content;
+
+    if (_isLoadingInfo) {
+      content = Row(
+        children: const [
+          SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1352C8)),
+            ),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              "Memuat pengumuman terbaru...",
+              style: TextStyle(
+                  fontWeight: FontWeight.w500, color: Color(0xFF454F63)),
+            ),
           ),
         ],
-      ),
-      child: Row(
+      );
+    } else if (_infoError != null) {
+      content = Row(
+        children: [
+          const Icon(Icons.error_outline, color: Colors.red, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _infoError!,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w500, color: Colors.red),
+            ),
+          ),
+        ],
+      );
+    } else if (_infoBoard != null) {
+      content = Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
@@ -282,19 +440,62 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _infoBoard!.judul,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w600, color: Color(0xFF454F63)),
+            ),
+          ),
+          const Icon(Icons.arrow_forward_ios,
+              size: 16, color: Colors.black38),
+        ],
+      );
+    } else {
+      content = Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE0F7FA),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.info_outline,
+              color: Color(0xFF00BCD4),
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 12),
           const Expanded(
             child: Text(
-              "Pada Hari Selasa tanggal 08 Oktober akan diberlakukan peraturan wajib helm...",
+              "Tidak ada pengumuman terbaru.",
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                   fontWeight: FontWeight.w500, color: Color(0xFF454F63)),
             ),
           ),
-          const Icon(Icons.arrow_forward_ios,
-              size: 16, color: Colors.black38),
+        ],
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
+      child: content,
     );
   }
 
@@ -408,13 +609,13 @@ class _HomeScreenState extends State<HomeScreen> {
     late IconData tierIcon;
 
     if (rank == 1) {
-      tierColor = Colors.amber; // 🥇 Emas
+      tierColor = Colors.amber;
       tierIcon = Icons.emoji_events;
     } else if (rank == 2) {
-      tierColor = const Color(0xFFC0C0C0); // 🥈 Silver
+      tierColor = const Color(0xFFC0C0C0);
       tierIcon = Icons.emoji_events;
     } else {
-      tierColor = const Color(0xFFCD7F32); // 🥉 Bronze
+      tierColor = const Color(0xFFCD7F32);
       tierIcon = Icons.emoji_events;
     }
 

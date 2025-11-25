@@ -1,4 +1,5 @@
-// lib/models/api_response.dart
+// lib/models/api_response.dart (PERBAIKAN)
+
 class ApiResponse<T> {
   final bool success;
   final String message;
@@ -19,13 +20,31 @@ class ApiResponse<T> {
     int statusCode, {
     T Function(dynamic)? fromJsonT,
   }) {
+    final bool isSuccess = json['status'] == 'success' || json['success'] == true;
+    
+    // Perbaikan utama di sini:
+    T? parsedData;
+    if (json['data'] != null) {
+      if (fromJsonT != null) {
+        // Jika ada parser custom (misal: InfoBoard.fromJson)
+        parsedData = fromJsonT(json['data']);
+      } else {
+        // Jika tidak ada parser custom, coba cast langsung.
+        // Ini bekerja jika T adalah String, int, bool, atau dynamic.
+        try {
+          parsedData = json['data'] as T?;
+        } catch (e) {
+          // Jika gagal, set null atau biarkan kosong, tergantung kebutuhan error handling.
+          // Untuk kasus ini, biarkan null jika gagal cast tipe kompleks tanpa parser.
+        }
+      }
+    }
+
     return ApiResponse<T>(
-      success: json['status'] == 'success',
-      message: json['message'] ?? '',
-      data: fromJsonT != null && json['data'] != null 
-          ? fromJsonT(json['data']) 
-          : json['data'],
-      errors: json['errors'],
+      success: isSuccess,
+      message: json['message'] ?? 'Unknown error',
+      data: parsedData, // Menggunakan data yang sudah diparsing/dikonversi
+      errors: json['errors'] as Map<String, dynamic>?,
       statusCode: statusCode,
     );
   }
